@@ -4,11 +4,13 @@
 #include <cstring>
 #include "tokens.hpp"
 
-std::string str = "";
+struct string_state string_data = {"", ERROR_VALUE::NO_ERROR};
 
 void nl();
 void pushString(std::string s);
-
+void handle_escape(char* cur_text, bool is_digit = false);
+void return_initial();
+void error_handle_ud_escape(int error_reason);
 %}
 
 %option yylineno
@@ -52,16 +54,17 @@ continue                { return 15;}
 {NUM}                {return 27;}
 {NUM}b              {return 28;}
 [ \t]                { }
-\n                     {nl();}
 
-\"                   { BEGIN(STRING); str = "\"";}
-<STRING>[^\"\\]*\\n          { pushString(yytext); str[str.size() - 2] = '\n'; str =str.substr(0, str.size() - 1);}
-<STRING>[^\"\\]*\\t          { pushString(yytext); str.replace(str.size() - 2, 2, "\t");}
-<STRING>[^\"\\]*\\x{DIGITX}{DIGITX}          { pushString(yytext); str[str.size() - 4] = stoi(str.substr(str.size() - 2), nullptr, 16); str = str.substr(0, str.size() - 3);}
+\"                   { BEGIN(STRING); string_data.str = "\"";}
 
-<STRING>[^\"\\]*\"           { BEGIN(INITIAL); pushString(yytext); yytext = (char*)malloc((str.size() + 1)*sizeof(char)); std::strcpy(yytext, str.c_str()); return 29;}
+<STRING>([^\\\n\r\"]+)                              {pushString(yytext);}
+<STRING>\\[nrt\\\"0]                                {handle_escape(yytext);}
+<STRING>\\.                                          {pushString(yytext); string_data.ERROR_TYPE = UNDEFINED_ESCAPE; return 29;}
+<STRING>[\n\r]                                      { string_data.ERROR_TYPE = UNDEFINED_ESCAPE; return 29;}
+<STRING>[^\"\\]*\\x{DIGITX}{DIGITX}                 { handle_escape(yytext,  true);}
 
-
+<STRING>\"                  { return_initial(); return 29;}
+<STRING>[\n]
 
 . { return 0;}
 
@@ -72,5 +75,64 @@ void nl(){
 }
 
 void pushString(std::string s) {
-    str += s;
+    string_data.str += s;
+}
+
+void handle_escape(char* cur_text, bool is_digit){
+    pushString(cur_text);
+    char target = 0;
+    int index_replace = 2;
+    int suffix_size = 1;
+    if(is_digit == false){
+        switch (cur_text[1])
+        {
+        case 'n':
+            target = '\n';
+            break;
+        case 't':
+            target = '\t';
+            break;
+        case 'r':
+            target = '\r';
+            break;
+        case '0':
+            target = '\0';
+            break;
+        case '\\':
+            target = '\\';
+            break;
+        case '"':
+            target = '"';
+            break;
+
+        default:
+            break;
+        }
+    }
+    else{
+        target = stoi(string_data.str.substr(string_data.str.size() - 2), nullptr, 16);
+        if(target > 0x7e || target < 0x20){
+            //TO DO error
+            return;
+        }
+        index_replace = 4;
+        suffix_size = 3;
+    }
+    string_data.str[string_data.str.size() - index_replace] = target;
+    string_data.str =string_data.str.substr(0, string_data.str.size() - suffix_size);
+}
+
+void return_initial(){
+    BEGIN(INITIAL);
+    pushString(yytext);
+}
+
+void error_handle_ud_escape(int error_reason){
+    string_data.ERROR_TYPE = UNDEFINED_ESCAPE;
+    if(error_reason == 1 ) {// " \q "
+        string_data.str = string_data.str.substr(string_data.str.size()-1, 1);
+    }
+    else if(error_reason == 2){ // \n etc. 
+
+    }
 }
