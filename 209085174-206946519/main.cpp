@@ -10,7 +10,9 @@ int main() {
     while ((token = static_cast<tokentype>(yylex()))) {
         // your code here
         if(string_data.ERROR_TYPE != ERROR_VALUE::NO_ERROR){
-            switch (string_data.ERROR_TYPE)
+		ERROR_VALUE error_type = string_data.ERROR_TYPE;
+		string_data.ERROR_TYPE = ERROR_VALUE::NO_ERROR;
+            switch (error_type)
             {
             case ERROR_VALUE::UNKNOWN_CHAR:
                 output::errorUnknownChar(yytext[0]);
@@ -40,9 +42,7 @@ int main() {
 
 
 //\"[^"\\\n\r]*\"           {return 29;}
-rm -f lex.yy.c hw1
-flex scanner.lex
-g++ -std=c++17  -g -o hw1 *.c *.cpp
+
 /*
 <STRING>[^\"\\]*\\n          { handle_escape(yytext, '\n');}
 <STRING>[^\"\\]*\\t          { handle_escape(yytext, '\t');}

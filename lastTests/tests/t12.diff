@@ -1,0 +1,34 @@
+126c126,156
+< ERROR: Unknown character 1
+---
+> 23 NUM 12
+> 23 ID AB
+> 23 ASSIGN =
+> 23 NUM 0
+> 23 SC ;
+> 25 INT int
+> 25 NUM 42
+> 25 ASSIGN =
+> 25 NUM 1
+> 25 SC ;
+> 26 COMMENT //
+> 27 INT int
+> 27 ID OO7
+> 27 ASSIGN =
+> 27 NUM 3
+> 27 SC ;
+> 28 INT int
+> 28 ID max
+> 28 ASSIGN =
+> 28 NUM 4
+> 28 SC ;
+> 29 ID printf
+> 29 LPAREN (
+> 29 STRING This\is"an
+> examplefor	escapellljQQWc
+> 29 RPAREN )
+> 29 SC ;
+> 30 RETURN return
+> 30 NUM 11
+> 30 SC ;
+> 32 RBRACE }

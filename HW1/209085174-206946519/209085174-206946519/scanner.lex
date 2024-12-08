@@ -8,9 +8,10 @@ struct string_state string_data = {"", ERROR_VALUE::NO_ERROR};
 
 void nl();
 void pushString(std::string s);
-void handle_escape(char* cur_text, bool is_digit = false);
+bool  handle_escape(char* cur_text, bool is_digit = false);
 void return_initial();
-void error_handle_ud_escape(int error_length);
+
+void error_handle_ud_escape(int error_length, ERROR_VALUE error_type);
 %}
 
 %option yylineno
@@ -18,7 +19,7 @@ void error_handle_ud_escape(int error_length);
 
 /* Rules Section */
 DIGIT  [0-9]
-DIGITX  [0-9a-fA-F]
+DIGITX  ([2-6][0-9A-Fa-f])|(7[0-9A-Da-d])
 LETTER [a-zA-Z]
 WORD   {LETTER}({LETTER}|{DIGIT})*
 NUM    [1-9][0-9]*|0
@@ -45,8 +46,8 @@ continue                { return 15;}
 ,               { return 17;}
 \(                { return 18;}
 \)                { return 19;}
-{                { return 20;}
-}                { return 21;}
+\{                { return 20;}
+\}                { return 21;}
 =                { return 22;}
 ==|!=|<|>|<=|>=              { return 23;}
 \+|-|\*|\/             { return 24;}
@@ -54,17 +55,17 @@ continue                { return 15;}
 {WORD}                          {return 26;}
 {NUM}                {return 27;}
 {NUM}b              {return 28;}
-[ \t]                { ;}
-\n                     {;}
+[\n\r\t ]                { ;}
 
-\"                   { BEGIN(STRING); string_data.str = "\"";}
+\"                   { BEGIN(STRING); string_data.str = "";}
 
 <STRING>([^\\\n\r\"]+)                              {pushString(yytext);}
 <STRING>\\[nrt\\\"0]                                {handle_escape(yytext);}
 <STRING>\\.                                {error_handle_ud_escape(1, ERROR_VALUE::UNDEFINED_ESCAPE);return 29;}
-<STRING>[\n\r]                                      { error_handle_ud_escape(1, ERROR_VALUE::UNKNOWN_CHAR);return 29;}
-<STRING>[^\"\\]*\\x{DIGITX}{DIGITX}                 { handle_escape(yytext,  true);}
-<STRING>[^\"\\]*\\x{DIGITX}                 { error_handle_ud_escape(2, ERROR_VALUE::UNDEFINED_ESCAPE); return 29;}
+<STRING>[\n\r]                                      { error_handle_ud_escape(1, ERROR_VALUE::UNCLOSED_STRING);return 29;}
+<STRING>[^\"\\]*\\x{DIGITX}                 { handle_escape(yytext,  true);}
+<STRING>[^\"\\]*\\x[^\"][^\"]                 { error_handle_ud_escape(3, ERROR_VALUE::UNDEFINED_ESCAPE); return 29;}
+<STRING>[^\"\\]*\\x[^\"]                 { error_handle_ud_escape(2, ERROR_VALUE::UNDEFINED_ESCAPE); return 29;}
 
 
 <STRING>\"                  { return_initial(); return 29;}
@@ -82,8 +83,7 @@ void pushString(std::string s) {
     string_data.str += s;
 }
 
-void handle_escape(char* cur_text, bool is_digit){
-    pushString(cur_text);
+bool handle_escape(char* cur_text, bool is_digit){
     char target = 0;
     int index_replace = 2;
     int suffix_size = 1;
@@ -114,24 +114,28 @@ void handle_escape(char* cur_text, bool is_digit){
         }
     }
     else{
-        target = stoi(string_data.str.substr(string_data.str.size() - 2), nullptr, 16);
+	std::string tmp(cur_text);
+//        target = stoi(string_data.str.substr(string_data.str.size() - 2), nullptr, 16);
+        target = stoi(tmp.substr(tmp.size() - 2), nullptr, 16);
         if(target > 0x7e || target < 0x20){
-            //TO DO error
-            return;
+	    error_handle_ud_escape(3, ERROR_VALUE::UNDEFINED_ESCAPE);
+            return false;
         }
         index_replace = 4;
         suffix_size = 3;
     }
+    pushString(cur_text);
     string_data.str[string_data.str.size() - index_replace] = target;
     string_data.str =string_data.str.substr(0, string_data.str.size() - suffix_size);
+	return true;
 }
 
 void return_initial(){
     BEGIN(INITIAL);
-    pushString(yytext);
 }
 
 void error_handle_ud_escape(int error_length, ERROR_VALUE error_type){
+    pushString(yytext);
     string_data.ERROR_TYPE = error_type;
     string_data.str = string_data.str.substr(string_data.str.size()-error_length, error_length);
 }

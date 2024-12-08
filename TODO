@@ -1,1 +1,4 @@
+errors prints
 handle the case of "\xF"
+handle \t in inital mode
+tests
