@@ -52,7 +52,7 @@ namespace ast {
     class Exp : virtual public Node {
     public: 
         BuiltInType type;
-        Exp(BuiltInType type) : type(type) {};
+        Exp() : type(BuiltInType::VOID) {};
     };
 
     /* Base class for all statements */
