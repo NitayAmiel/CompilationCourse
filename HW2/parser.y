@@ -2,6 +2,7 @@
 
 #include "nodes.hpp"
 #include "output.hpp"
+#include <iostream>
 
 // bison declarations
 extern int yylineno;
@@ -17,8 +18,17 @@ using namespace std;
 // TODO: Place any additional declarations here
 %}
 
-%token <shared_ptr<ast::ID>> ID
-// TODO: Define tokens here
+%token SC
+%token INT
+%token ID 
+%token ADD MUL SUB DIV VOID INT BYTE BOOL AND OR TRUE FALSE RETURN IF ELSE WHILE BREAK CONTINUE  COMMA LPAREN RPAREN LBRACE RBRACE ASSIGN  NUM NUM_B STRING
+%right ID
+%left  AND OR EQ NE LT GT LE GE 
+%left NOT RPAREN ELSE 
+%right IF
+%left ADD SUB
+%left MUL DIV 
+
 
 // TODO: Define precedence and associativity here
 
@@ -28,59 +38,52 @@ using namespace std;
 Program:  Funcs { program = $1; }
 ;
 
-Funcs: FuncDecl Funcs {}
-| 
-
-
-
-
-
-Funcs: FuncDecl Funcs {}
+Funcs: FuncDecl Funcs {$$ = $1; std::dynamic_pointer_cast<ast::Funcs>($$)->push_back(std::dynamic_pointer_cast<ast::FuncDecl>($2));}
      | /* empty */ {}
 ;
 
-FuncDecl: RetType ID LPAREN Formals RPAREN LBRACE Statements RBRACE {}
+FuncDecl: RetType ID LPAREN Formals RPAREN LBRACE Statements RBRACE {$$ = std::make_shared<ast::FuncDecl>(std::dynamic_pointer_cast<ast::ID>($2), std::dynamic_pointer_cast<ast::Type>($1), std::dynamic_pointer_cast<ast::Formals>($4), std::dynamic_pointer_cast<ast::Statements>($7));}
 ;
 
-RetType: Type {}
-       | VOID {}
+RetType: Type {$$ = $1;}
+       | VOID {$$ = $1;}
 ;
 
-Formals: FormalsList {}
+Formals: FormalsList { $$ = $1; }
        | /* empty */ {}
 ;
 
-FormalsList: FormalDecl {}
-           | FormalDecl COMMA FormalsList {}
+FormalsList: FormalDecl {$$ = std::make_shared<ast::Formals>(std::dynamic_pointer_cast<ast::Formal>($1));}
+           | FormalDecl COMMA FormalsList {$$ = $3; std::dynamic_pointer_cast<ast::Formals>($$)->push_front( std::dynamic_pointer_cast<ast::Formal>($1));}
 ;
 
-FormalDecl: Type ID {}
+FormalDecl: Type ID {$$ = std::make_shared<ast::Formal>(std::dynamic_pointer_cast<ast::ID>($2), std::dynamic_pointer_cast<ast::Type>($1) );}
 ;
 
-Statements: Statement{}
-          |  Statements Statement {}
+Statements: Statement{$$  = std::make_shared<ast::Statements>(std::dynamic_pointer_cast<ast::Statement>($1)); }
+          |  Statements Statement {$$ = $1;  std::dynamic_pointer_cast<ast::Statements>($$)->push_back(std::dynamic_pointer_cast<ast::Statement>($2));}
 ;
 
-Statement: LBRACE Statement RBRACE {}
-         | Type ID SC {}
-         | Type ID ASSIGN Exp SC {}
-         | ID ASSIGN Exp SC {}
-         | Call SC {}
-         | RETURN SC {}
-         | RETURN Exp SC {}
-         | IF LPAREN Exp RPAREN Statement {}
-         | IF LPAREN Exp RPAREN Statement ELSE Statement {}
-         | WHILE LPAREN Exp RPAREN Statement {}
-         | BREAK SC {}
-         | CONTINUE SC {}
+Statement: LBRACE Statement RBRACE {$$ = $2;}
+         | Type ID SC {$$ = std::make_shared<ast::VarDecl>(std::dynamic_pointer_cast<ast::ID>($2), std::dynamic_pointer_cast<ast::Type>($1));}
+         | Type ID ASSIGN Exp SC {$$ = std::make_shared<ast::VarDecl>(std::dynamic_pointer_cast<ast::ID>($2), std::dynamic_pointer_cast<ast::Type>($1), std::dynamic_pointer_cast<ast::Exp>($4));}
+         | ID ASSIGN Exp SC {$$ = std::make_shared<ast::Assign>(std::dynamic_pointer_cast<ast::ID>($1), std::dynamic_pointer_cast<ast::Exp>($3));}
+         | Call SC {$$ = $1;}
+         | RETURN SC {$$ = std::make_shared<ast::Return>();}
+         | RETURN Exp SC { $$ = std::make_shared<ast::Return>(std::dynamic_pointer_cast<ast::Exp>($2));}
+         | IF LPAREN Exp RPAREN Statement {$$ = std::make_shared<ast::If>(std::dynamic_pointer_cast<ast::Exp>($3), std::dynamic_pointer_cast<ast::Statement>($5));}
+         | IF LPAREN Exp RPAREN Statement ELSE Statement {$$ = std::make_shared<ast::If>(std::dynamic_pointer_cast<ast::Exp>($3), std::dynamic_pointer_cast<ast::Statement>($5), std::dynamic_pointer_cast<ast::Statement>($7));}
+         | WHILE LPAREN Exp RPAREN Statement {$$ = std::make_shared<ast::While>(std::dynamic_pointer_cast<ast::Exp>($3), std::dynamic_pointer_cast<ast::Statement>($5));}
+         | BREAK SC {$$ =$1;}
+         | CONTINUE SC {$$ = $1;}
 ;
 
-Call: ID LPAREN ExpList RPAREN {}
-    | ID LPAREN RPAREN {}
+Call: ID LPAREN ExpList RPAREN {$$ = std::make_shared<ast::Call>(std::dynamic_pointer_cast<ast::ID>($1), std::dynamic_pointer_cast<ast::ExpList>($3));}
+    | ID LPAREN RPAREN {$$ = std::make_shared<ast::Call>(std::dynamic_pointer_cast<ast::ID>($1));}
 ;
 
-ExpList: Exp {$$ = new ExpList($1);}
-       | Exp COMMA ExpList { $$ = $3; $$->push_front($1);}
+ExpList: Exp {$$ = std::make_shared<ast::ExpList>(std::dynamic_pointer_cast<ast::Exp>($1));}
+       | Exp COMMA ExpList { $$ = $3; std::dynamic_pointer_cast<ast::ExpList>($$)->push_front(std::dynamic_pointer_cast<ast::Exp>($1));}
 ;
 
 Type: INT { $$ = $1;}
@@ -90,7 +93,10 @@ Type: INT { $$ = $1;}
 
 
 Exp: LPAREN Exp RPAREN {$$ = $2;}
-   | Exp BINOP Exp {$$ = new BINOP($1, $3, $2);}
+   | Exp ADD Exp {$$ = std::make_shared<ast::BinOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3), ast::BinOpType::ADD);}
+   | Exp SUB Exp {$$ = std::make_shared<ast::BinOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3), ast::BinOpType::SUB);}
+   | Exp MUL Exp {$$ = std::make_shared<ast::BinOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3), ast::BinOpType::MUL);}
+   | Exp DIV Exp {$$ = std::make_shared<ast::BinOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3), ast::BinOpType::DIV);}
    | ID { $$ = $1;}
    | Call {$$ = $1;}
    | NUM {$$ = $1;}
@@ -98,15 +104,24 @@ Exp: LPAREN Exp RPAREN {$$ = $2;}
    | STRING {$$ = $1;}
    | TRUE {$$ = $1;}
    | FALSE {$$ = $1;}
-   | NOT Exp {$$ = new Not($2);}
-   | Exp AND Exp { $$ = new And($1, $3);}
-   | Exp OR Exp { $$ = new Or($1, $3);}
-   | Exp RELOP Exp { $$ = new RelOp($1, $3, $2);}
-   | LPAREN Type RPAREN Exp {$$ = new Cast($4, $2);}
+   | NOT Exp { $$ = std::make_shared<ast::Not>(std::dynamic_pointer_cast<ast::Exp>($2)); }
+   | Exp AND Exp { $$ = std::make_shared<ast::And>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3)); }
+   | Exp OR Exp { $$ = std::make_shared<ast::Or>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3)); }
+| Exp EQ Exp                    {$$ = std::make_shared<ast::RelOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3),ast::RelOpType::EQ); }
+| Exp NE Exp                    {$$ = std::make_shared<ast::RelOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3),ast::RelOpType::NE); }
+| Exp LT Exp                    {$$ = std::make_shared<ast::RelOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3),ast::RelOpType::LT); }
+| Exp GT Exp                    {$$ = std::make_shared<ast::RelOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3),ast::RelOpType::GT); }
+| Exp LE Exp                    {$$ = std::make_shared<ast::RelOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3),ast::RelOpType::LE); }
+| Exp GE Exp                    {$$ = std::make_shared<ast::RelOp>(std::dynamic_pointer_cast<ast::Exp>($1), std::dynamic_pointer_cast<ast::Exp>($3),ast::RelOpType::GE); }
+   | LPAREN Type RPAREN Exp        {$$ = std::make_shared<ast::Cast>(std::dynamic_pointer_cast<ast::Exp>($4), std::dynamic_pointer_cast<ast::Type>($2)); }
 ;
 
 // TODO: Define grammar here
 
 %%
 
+void yyerror(const char*){
+    output::errorSyn(yylineno);
+       exit(0);
+}
 // TODO: Place any additional code here

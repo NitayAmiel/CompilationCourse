@@ -1,5 +1,5 @@
-#include "output.hpp"
 #include "nodes.hpp"
+#include "output.hpp"
 
 // Extern from the bison-generated parser
 extern int yyparse();
