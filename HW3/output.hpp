@@ -65,15 +65,22 @@ namespace output {
         friend std::ostream &operator<<(std::ostream &os, const ScopePrinter &printer);
     };
 
+    
+    typedef struct
+    {
+        std::string name;
+        ast::BuiltInType type;
+        int offset;
+    }  VariableAttributes ;
+    
     typedef struct
     {
         std::string name;
         ast::BuiltInType ret_type;
-        std::vector<ast::BuiltInType> paramTypes;
+        std::vector<VariableAttributes> paramTypes;
         int offset;
     }  SymTableEntry ;
-    
-    
+
     typedef struct
     {
         // TO DO
@@ -96,7 +103,7 @@ namespace output {
 
         // void leave_child();
         void insert_variable(std::string name, ast::BuiltInType type);
-        void insert_func(std::string name, ast::BuiltInType return_type , std::vector<ast::BuiltInType> params);
+        void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params);
         void begin_Scope();
         void end_scope();
         const SymTableEntry* id_exists(std::string name);

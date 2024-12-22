@@ -50,8 +50,9 @@ namespace ast {
 
     /* Base class for all expressions */
     class Exp : virtual public Node {
-    public:
-        Exp() = default;
+    public: 
+        BuiltInType type;
+        Exp(BuiltInType type) : type(type) {};
     };
 
     /* Base class for all statements */

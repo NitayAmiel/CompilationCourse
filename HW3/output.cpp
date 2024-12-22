@@ -384,24 +384,33 @@ namespace output {
         node.type->accept(*this);
         if (node.init_exp) {
             node.init_exp->accept(*this);
-            if()
+            if(node.init_exp->type != node.type->type){
+                errorMismatch(node.line);
+            }
         }
-        if(id_exists(node.id->value)) {
-            errorDef(node.line, node.id->value);
+        const SymTableEntry* id_entry = id_exists(node.id->value);
+        if(id_entry ) {
+            if(id_entry->paramTypes.size() == 0) {
+                errorDef(node.line, node.id->value);
+            }else{
+                errorDefAsFunc(node.line, node.id->value);
+            }
         }
         insert_variable(node.id->value, node.type->type);
     }
 
     void MyVisitor::visit(ast::Assign &node) {
-        print_indented("Assign");
-
-        enter_child();
         node.id->accept(*this);
-        leave_child();
-
-        enter_last_child();
         node.exp->accept(*this);
-        leave_child();
+        const SymTableEntry* id_entry = id_exists(node.id->value);
+        if(id_entry == nullptr) {
+            errorUndef(node.line, node.id->value);    
+        }else if(id_entry->paramTypes.size() > 0) {
+            errorDefAsFunc(node.line, node.id->value);
+        }else if(id_entry->ret_type != node.exp->type){
+            errorMismatch(node.line);
+        }
+
     }
 
     void MyVisitor::visit(ast::Formal &node) {
@@ -417,37 +426,28 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Formals &node) {
-        print_indented("Formals");
-
         for (auto it = node.formals.rbegin(); it != node.formals.rend(); ++it) {
-            if (it != node.formals.rend() - 1) {
-                enter_child();
-            } else {
-                enter_last_child();
-            }
             (*it)->accept(*this);
-            leave_child();
         }
     }
 
     void MyVisitor::visit(ast::FuncDecl &node) {
-        print_indented("FuncDecl");
-
-        enter_child();
         node.id->accept(*this);
-        leave_child();
-
-        enter_child();
         node.return_type->accept(*this);
-        leave_child();
-
-        enter_child();
         node.formals->accept(*this);
-        leave_child();
 
-        enter_last_child();
+        std::vector<VariableAttributes> parameters;
+        for(int i = 0 ; i < node.formals->formals.size(); ++i) {
+            parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -i});
+        }
+
+        const SymTableEntry *entry = this->id_exists(node.id->value);
+        if(entry) {
+            errorDef(node.line, node.id->value);
+        } else {
+            this->insert_func(node.id->value, node.return_type->type, parameters);
+        }
         node.body->accept(*this);
-        leave_child();
     }
 
     void MyVisitor::visit(ast::Funcs &node) {
@@ -467,18 +467,22 @@ namespace output {
     void MyVisitor :: insert_variable(std::string name, ast::BuiltInType type)
     {
         int offset = this->offset_table.back();
-        std::vector<ast::BuiltInType> dummy;
+        std::vector<VariableAttributes> dummy;
         SymTableEntry element = {name, type, dummy, offset};
         this->sym_table.back().push_back(element);
         this->scope_printer.emitVar(name, type, offset);
         this->offset_table.back()+= SIZE_OF_TYPE;
     }
 
-    void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<ast::BuiltInType> params)
+    void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params)
     {
         SymTableEntry element = {name, return_type, params, 0};
         this->sym_table.front().push_back(element);
-        this->scope_printer.emitFunc(name, return_type, params);
+        std::vector<ast::BuiltInType> params_array;
+        for(auto const &param : params){
+            params_array.push_back(param.type);
+        }
+        this->scope_printer.emitFunc(name, return_type, params_array);
     }
 
     void MyVisitor :: begin_Scope()
