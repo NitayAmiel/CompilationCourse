@@ -154,11 +154,14 @@ namespace output {
         
     }
 
+
+// TO DO  :  updating the Exp->type
     void MyVisitor::visit(ast::Num &node) {
         
     }
 
     void MyVisitor::visit(ast::NumB &node) {
+        // to check sizes of numb
         print_indented("NumB: " + std::to_string(node.value));
     }
 
@@ -287,6 +290,9 @@ namespace output {
         leave_child();
     }
 
+
+// ----------------------------------------------------------------
+// Nitay 
     void MyVisitor::visit(ast::ExpList &node) {
         print_indented("ExpList");
 
@@ -313,6 +319,8 @@ namespace output {
         leave_child();
     }
 
+
+
     void MyVisitor::visit(ast::Statements &node) {
         print_indented("Statements");
 
@@ -327,6 +335,7 @@ namespace output {
         }
     }
 
+// Shaychuck
     void MyVisitor::visit(ast::Break &node) {
         print_indented("Break");
     }
@@ -335,6 +344,8 @@ namespace output {
         print_indented("Continue");
     }
 
+
+// Nitay ush
     void MyVisitor::visit(ast::Return &node) {
         print_indented("Return");
 
