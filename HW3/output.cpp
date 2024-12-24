@@ -157,28 +157,30 @@ namespace output {
 
 // TO DO  :  updating the Exp->type
     void MyVisitor::visit(ast::Num &node) {
-        
+        node.type = ast::BuiltInType::INT;
     }
 
     void MyVisitor::visit(ast::NumB &node) {
         // to check sizes of numb
-        print_indented("NumB: " + std::to_string(node.value));
+        if(node.value > 127 || node.value < -128) {
+            errorByteTooLarge(node.line, node.value);
+        }
+        node.type = ast::BuiltInType::BYTE;
     }
 
     void MyVisitor::visit(ast::String &node) {
-        print_indented("String: " + node.value);
+        node.type = ast::BuiltInType::STRING;
     }
 
     void MyVisitor::visit(ast::Bool &node) {
-        print_indented("Bool: " + std::string((node.value ? "true" : "false")));
+        node.type = ast::BuiltInType::BOOL;
     }
 
-    void MyVisitor::visit(ast::ID &node) {
-        print_indented("ID: " + node.value);
-    }
+    void MyVisitor::visit(ast::ID &node) { /* NOTHING? */}
 
     void MyVisitor::visit(ast::BinOp &node) {
         std::string op;
+        node.type = ast::BuiltInType::BOOL;
 
         switch (node.op) {
             case ast::BinOpType::ADD:
@@ -194,8 +196,6 @@ namespace output {
                 op = "/";
                 break;
         }
-
-        print_indented("BinOp: " + op);
 
         enter_child();
         node.left->accept(*this);
