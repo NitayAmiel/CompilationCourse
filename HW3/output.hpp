@@ -92,6 +92,8 @@ namespace output {
         std::vector<int> offset_table;
         std::map<std::string, TypeTableEntry> type_table;
         ScopePrinter scope_printer;
+        std::string current_function_name;
+        bool first_run_on_function_declerations;
 
         /* Helper function to print a string with the current indentation */
         //void print_indented(const std::string &str);

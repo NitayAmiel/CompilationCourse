@@ -4,6 +4,11 @@
 namespace output {
     /* Helper functions */
 
+    static bool is_function (const  SymTableEntry * IdEntry){
+
+        return ((IdEntry != nullptr) && (IdEntry->paramTypes.size() != 0));
+    }
+
     static std::string toString(ast::BuiltInType type) {
         switch (type) {
             case ast::BuiltInType::INT:
@@ -148,10 +153,18 @@ namespace output {
     MyVisitor::MyVisitor(){
         std::vector<SymTableEntry> initial_vector;
         this->sym_table.push_back(initial_vector);
-        this->insert_func("print", ast::BuiltInType::VOID, std::vector<ast::BuiltInType>({ast::BuiltInType::STRING}));
-        this->insert_func("printi", ast::BuiltInType::VOID, std::vector<ast::BuiltInType>({ast::BuiltInType::INT}));
+        VariableAttributes print_param_attributes = { "param", ast::BuiltInType::STRING , 0};
+        std::vector<VariableAttributes> print_params = {print_param_attributes};
+        VariableAttributes printi_param_attributes = { "param", ast::BuiltInType::INT , 0};
+        std::vector<VariableAttributes> printi_params = {printi_param_attributes};
+        this->insert_func("print", ast::BuiltInType::VOID, print_params);
+        this->insert_func("printi", ast::BuiltInType::VOID, printi_params);
+        //this->insert_func("printi", ast::BuiltInType::VOID, std::vector<ast::BuiltInType>({ast::BuiltInType::INT}));
         this->offset_table.push_back(0);
         
+
+        // trying to manage from here
+        this->first_run_on_function_declerations = true;
     }
 
 
@@ -294,45 +307,52 @@ namespace output {
 // ----------------------------------------------------------------
 // Nitay 
     void MyVisitor::visit(ast::ExpList &node) {
-        print_indented("ExpList");
-
-        for (auto it = node.exps.rbegin(); it != node.exps.rend(); ++it) {
-            if (it != node.exps.rend() - 1) {
-                enter_child();
-            } else {
-                enter_last_child();
-            }
+        for (auto it = node.exps.rbegin(); it != node.exps.rend(); ++it) {            
             (*it)->accept(*this);
-            leave_child();
         }
     }
 
     void MyVisitor::visit(ast::Call &node) {
-        print_indented("Call");
 
-        enter_child();
         node.func_id->accept(*this);
-        leave_child();
-
-        enter_last_child();
+        const SymTableEntry* id_entry = id_exists(node.func_id->value);
+        if (!id_entry) {
+            errorUndefFunc(node.line, node.func_id->value);
+        }else if(is_function(id_entry) == false) {
+            errorDefAsVar(node.line, node.func_id->value);
+        }
         node.args->accept(*this);
-        leave_child();
+        std::vector<std::string> params_types ;
+        for(auto param : id_entry->paramTypes) {
+            params_types.push_back(toString(param.type));
+        }
+        if(node.args->exps.size() != id_entry->paramTypes.size()) {
+            errorPrototypeMismatch(node.line, node.func_id->value, params_types);
+        }
+        for(int i = 0; i < id_entry->paramTypes.size(); i++){
+            if(node.args->exps[i]->type != id_entry->paramTypes[i].type){
+                errorPrototypeMismatch(node.line, node.func_id->value, params_types);
+            }
+        }
     }
 
 
 
-    void MyVisitor::visit(ast::Statements &node) {
-        print_indented("Statements");
 
-        for (auto it = node.statements.begin(); it != node.statements.end(); ++it) {
-            if (it != node.statements.end() - 1) {
-                enter_child();
-            } else {
-                enter_last_child();
-            }
+
+    void MyVisitor::visit(ast::Statements &node) {
+        // maybe need to be removed
+        this->begin_Scope();
+        ////////////////////////////////
+
+
+        for (auto it = node.statements.begin(); it != node.statements.end(); ++it) {            
             (*it)->accept(*this);
-            leave_child();
         }
+
+        // maybe need to be removed
+        this->end_scope();
+        ////////////////////////////////
     }
 
 // Shaychuck
@@ -347,34 +367,26 @@ namespace output {
 
 // Nitay ush
     void MyVisitor::visit(ast::Return &node) {
-        print_indented("Return");
-
         if (node.exp) {
-            enter_last_child();
             node.exp->accept(*this);
-            leave_child();
+        }
+        const SymTableEntry *id_entry = id_exists(this->current_function_name);
+        ast::BuiltInType return_type = id_entry->ret_type;
+        if ((node.exp && node.exp->type != return_type) || (node.exp == nullptr && return_type != ast::BuiltInType::VOID)){
+            errorMismatch(node.line);
         }
     }
 
     void MyVisitor::visit(ast::If &node) {
-        print_indented("If");
-
-        enter_child();
         node.condition->accept(*this);
-        leave_child();
-
-        if (node.otherwise) {
-            enter_child();
-        } else {
-            enter_last_child();
-        }
+        this->begin_Scope();
         node.then->accept(*this);
-        leave_child();
+        this->end_scope();
 
         if (node.otherwise) {
-            enter_last_child();
+            this->begin_Scope();
             node.otherwise->accept(*this);
-            leave_child();
+            this->end_scope();
         }
     }
 
@@ -443,35 +455,44 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::FuncDecl &node) {
-        node.id->accept(*this);
-        node.return_type->accept(*this);
-        node.formals->accept(*this);
+        if(this->first_run_on_function_declerations){
+            node.id->accept(*this);
+            node.return_type->accept(*this);
+            node.formals->accept(*this);
 
-        std::vector<VariableAttributes> parameters;
-        for(int i = 0 ; i < node.formals->formals.size(); ++i) {
-            parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -i});
-        }
+            std::vector<VariableAttributes> parameters;
+            for(int i = 0 ; i < node.formals->formals.size(); ++i) {
+                parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -i});
+            }
 
-        const SymTableEntry *entry = this->id_exists(node.id->value);
-        if(entry) {
-            errorDef(node.line, node.id->value);
-        } else {
-            this->insert_func(node.id->value, node.return_type->type, parameters);
+            const SymTableEntry *entry = this->id_exists(node.id->value);
+            if(entry) {
+                errorDef(node.line, node.id->value);
+            } else {
+                this->insert_func(node.id->value, node.return_type->type, parameters);
+            }
+        
+        }else{
+            this->begin_Scope();
+            this->current_function_name = node.id->value;
+            const SymTableEntry * id_entry = this->id_exists(node.id->value);
+            // TO DO 
+            // maintain the offset and symtable
+            for(auto & param : id_entry->paramTypes){
+                this->scope_printer.emitVar(param.name, param.type, param.offset);
+            }
+            node.body->accept(*this);
+            this->end_scope();
         }
-        node.body->accept(*this);
     }
 
     void MyVisitor::visit(ast::Funcs &node) {
-        print_indented("Funcs");
-
         for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
-            if (it != node.funcs.end() - 1) {
-                enter_child();
-            } else {
-                enter_last_child();
-            }
             (*it)->accept(*this);
-            leave_child();
+            this->first_run_on_function_declerations = false;
+        }
+        for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
+            (*it)->accept(*this);
         }
     }
 
