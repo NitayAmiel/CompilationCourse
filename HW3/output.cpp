@@ -193,8 +193,8 @@ namespace output {
 
     void MyVisitor::visit(ast::BinOp &node) {
         std::string op;
-        node.type = ast::BuiltInType::BOOL;
 
+        node.type = ast::BuiltInType::INT;
         switch (node.op) {
             case ast::BinOpType::ADD:
                 op = "+";
@@ -210,18 +210,14 @@ namespace output {
                 break;
         }
 
-        enter_child();
         node.left->accept(*this);
-        leave_child();
-
-        enter_last_child();
         node.right->accept(*this);
-        leave_child();
     }
 
     void MyVisitor::visit(ast::RelOp &node) {
         std::string op;
 
+        node.type = ast::BuiltInType::BOOL;
         switch (node.op) {
             case ast::RelOpType::EQ:
                 op = "==";
@@ -243,64 +239,33 @@ namespace output {
                 break;
         }
 
-        print_indented("RelOp: " + op);
-
-        enter_child();
         node.left->accept(*this);
-        leave_child();
-
-
-        enter_last_child();
         node.right->accept(*this);
-        leave_child();
     }
 
-    void MyVisitor::visit(ast::Type &node) {
-        print_indented("Type: " + toString(node.type));
-    }
+    void MyVisitor::visit(ast::Type &node) { /*NOTHING*/ }
 
     void MyVisitor::visit(ast::Cast &node) {
-        print_indented("Cast");
-
-        enter_child();
         node.exp->accept(*this);
-        leave_child();
-
-        enter_last_child();
         node.target_type->accept(*this);
-        leave_child();
+        node.type = node.target_type;
     }
 
     void MyVisitor::visit(ast::Not &node) {
-        print_indented("Not");
-
-        enter_last_child();
+        node.type = ast::BuiltInType::BOOL;
         node.exp->accept(*this);
-        leave_child();
     }
 
     void MyVisitor::visit(ast::And &node) {
-        print_indented("And");
-
-        enter_child();
         node.left->accept(*this);
-        leave_child();
-
-        enter_last_child();
         node.right->accept(*this);
-        leave_child();
+        node.type = ast::BuiltInType::BOOL;
     }
 
     void MyVisitor::visit(ast::Or &node) {
-        print_indented("Or");
-
-        enter_child();
         node.left->accept(*this);
-        leave_child();
-
-        enter_last_child();
         node.right->accept(*this);
-        leave_child();
+        node.type = ast::BuiltInType::BOOL;
     }
 
 
@@ -355,13 +320,17 @@ namespace output {
         ////////////////////////////////
     }
 
-// Shaychuck
+// Shaychuck - IDK HELPPPPPPPPPPPP MEEEEEEEEEEEEE
     void MyVisitor::visit(ast::Break &node) {
-        print_indented("Break");
+        if (!id_exists("While")) {
+            errorUnexpectedBreak(node.line);
+        }
     }
 
     void MyVisitor::visit(ast::Continue &node) {
-        print_indented("Continue");
+        if (!id_exists("While")) {
+            errorUnexpectedBreak(node.line);
+        }
     }
 
 
