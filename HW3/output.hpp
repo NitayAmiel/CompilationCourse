@@ -93,6 +93,7 @@ namespace output {
         std::map<std::string, TypeTableEntry> type_table;
         ScopePrinter scope_printer;
         std::string current_function_name;
+        unsigned int in_while;
         bool first_run_on_function_declerations;
 
         /* Helper function to print a string with the current indentation */
@@ -109,6 +110,8 @@ namespace output {
         void begin_Scope();
         void end_scope();
         const SymTableEntry* id_exists(std::string name);
+        SymTableEntry * MyVisitor :: id_exists_and_change(std::string name);
+
        // bool resolved_forward_references();
 
     public:

@@ -80,7 +80,7 @@ Statements: Statement {$$  = std::make_shared<ast::Statements>(std::dynamic_poin
           |  Statements Statement {$$ = $1;  std::dynamic_pointer_cast<ast::Statements>($$)->push_back(std::dynamic_pointer_cast<ast::Statement>($2));}
 ;
 
-Statement: LBRACE Statements RBRACE {$$ = $2;}
+Statement: LBRACE Statements RBRACE {$2->in_middle_of_braces = true;$$ = $2;}
          | Type ID SC {$$ = std::make_shared<ast::VarDecl>(std::dynamic_pointer_cast<ast::ID>($2), std::dynamic_pointer_cast<ast::Type>($1));}
          | Type ID ASSIGN Exp SC {$$ = std::make_shared<ast::VarDecl>(std::dynamic_pointer_cast<ast::ID>($2), std::dynamic_pointer_cast<ast::Type>($1), std::dynamic_pointer_cast<ast::Exp>($4));}
          | ID ASSIGN Exp SC {$$ = std::make_shared<ast::Assign>(std::dynamic_pointer_cast<ast::ID>($1), std::dynamic_pointer_cast<ast::Exp>($3));}

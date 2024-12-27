@@ -289,8 +289,10 @@ namespace ast {
         // List of statements
         std::vector<std::shared_ptr<Statement>> statements;
 
+        //
+        bool in_middle_of_braces ;
         // Constructor that receives no statements
-        Statements() = default;
+        Statements() : in_middle_of_braces(false) {};
 
         // Constructor that receives the first statement
         explicit Statements(std::shared_ptr<Statement> statement);

@@ -4,6 +4,12 @@
 namespace output {
     /* Helper functions */
 
+    static bool matching_types (ast::BuiltInType x, ast::BuiltInType y){
+        return (x == y ) || (x == ast::BuiltInType::INT && y == ast::BuiltInType::BYTE);
+    }
+    static bool is_numerical (ast::BuiltInType x){
+        return (x == ast::BuiltInType::INT ||  x == ast::BuiltInType::BYTE);
+    }
     static bool is_function (const  SymTableEntry * IdEntry){
 
         return ((IdEntry != nullptr) && (IdEntry->paramTypes.size() != 0));
@@ -165,6 +171,7 @@ namespace output {
 
         // trying to manage from here
         this->first_run_on_function_declerations = true;
+        this->in_while = 0;
     }
 
 
@@ -189,13 +196,17 @@ namespace output {
         node.type = ast::BuiltInType::BOOL;
     }
 
-    void MyVisitor::visit(ast::ID &node) { /* NOTHING? */}
+    void MyVisitor::visit(ast::ID &node) { 
+        const SymTableEntry* id_entry = id_exists(node.value);
+        if(id_entry && !is_function(id_entry)){
+            node.type = id_entry->ret_type;
+        }
+    }
 
     void MyVisitor::visit(ast::BinOp &node) {
-        std::string op;
+        //std::string op;
 
-        node.type = ast::BuiltInType::INT;
-        switch (node.op) {
+        /*switch (node.op) {
             case ast::BinOpType::ADD:
                 op = "+";
                 break;
@@ -208,17 +219,25 @@ namespace output {
             case ast::BinOpType::DIV:
                 op = "/";
                 break;
-        }
+        }*/
 
         node.left->accept(*this);
         node.right->accept(*this);
+        if(!is_numerical(node.left->type) || !is_numerical(node.right->type)){
+            errorMismatch(node.line);
+        }
+        if(node.left->type == ast::BuiltInType::INT || node.right->type == ast::BuiltInType::INT) {
+            node.type = ast::BuiltInType::INT;
+        }else{
+            node.type = ast::BuiltInType::BYTE;
+        }
     }
 
     void MyVisitor::visit(ast::RelOp &node) {
         std::string op;
 
         node.type = ast::BuiltInType::BOOL;
-        switch (node.op) {
+        /*switch (node.op) {
             case ast::RelOpType::EQ:
                 op = "==";
                 break;
@@ -237,10 +256,13 @@ namespace output {
             case ast::RelOpType::GE:
                 op = ">=";
                 break;
-        }
+        }*/
 
         node.left->accept(*this);
         node.right->accept(*this);
+        if(!is_numerical(node.left->type) || !is_numerical(node.right->type)){
+            errorMismatch(node.line);
+        }
     }
 
     void MyVisitor::visit(ast::Type &node) { /*NOTHING*/ }
@@ -248,23 +270,60 @@ namespace output {
     void MyVisitor::visit(ast::Cast &node) {
         node.exp->accept(*this);
         node.target_type->accept(*this);
-        node.type = node.target_type;
+        ast::BuiltInType target = node.target_type->type;
+        ast::BuiltInType casted = node.type ;
+        if(casted == target){
+            return;
+        }
+        if(!is_numerical(target) || !is_numerical(casted)) {
+            errorMismatch(node.line);
+        }
+        node.type = node.target_type->type;
+        try {
+        // Attempt to dynamically cast Parent* to ChildA*
+        std::shared_ptr<ast::ID> id_obj = std::dynamic_pointer_cast<ast::ID>(node.exp);
+        if (id_obj) {
+            SymTableEntry* id_entry = id_exists_and_change(id_obj->value);
+            if(!id_entry){
+                errorUndef(node.line, id_obj->value);
+            }
+            if(is_function(id_entry)){
+                errorDefAsFunc(node.line, id_obj->value);
+            }
+            id_entry->ret_type = target;
+        } else {
+            throw std::bad_cast();
+        }
+        }
+        catch (const std::bad_cast&) {
+            return;
+        }
     }
 
     void MyVisitor::visit(ast::Not &node) {
-        node.type = ast::BuiltInType::BOOL;
         node.exp->accept(*this);
+        if(node.exp->type != ast::BuiltInType::BOOL){
+            errorMismatch(node.line);
+        }
+        node.type = ast::BuiltInType::BOOL;
     }
 
     void MyVisitor::visit(ast::And &node) {
         node.left->accept(*this);
         node.right->accept(*this);
+        if(node.left->type != ast::BuiltInType::BOOL || node.right->type != ast::BuiltInType::BOOL){
+            errorMismatch(node.line);
+        }
+        
         node.type = ast::BuiltInType::BOOL;
     }
 
     void MyVisitor::visit(ast::Or &node) {
         node.left->accept(*this);
         node.right->accept(*this);
+        if(node.left->type != ast::BuiltInType::BOOL || node.right->type != ast::BuiltInType::BOOL){
+            errorMismatch(node.line);
+        }
         node.type = ast::BuiltInType::BOOL;
     }
 
@@ -295,10 +354,11 @@ namespace output {
             errorPrototypeMismatch(node.line, node.func_id->value, params_types);
         }
         for(int i = 0; i < id_entry->paramTypes.size(); i++){
-            if(node.args->exps[i]->type != id_entry->paramTypes[i].type){
+            if(!matching_types(id_entry->paramTypes[i].type,  node.args->exps[i]->type )){
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
         }
+        node.type = id_entry->ret_type;
     }
 
 
@@ -307,7 +367,9 @@ namespace output {
 
     void MyVisitor::visit(ast::Statements &node) {
         // maybe need to be removed
-        this->begin_Scope();
+        if(node.in_middle_of_braces){
+            this->begin_Scope();
+        }
         ////////////////////////////////
 
 
@@ -316,20 +378,22 @@ namespace output {
         }
 
         // maybe need to be removed
-        this->end_scope();
+        if(node.in_middle_of_braces){
+            this->end_scope();
+        }
         ////////////////////////////////
     }
 
 // Shaychuck - IDK HELPPPPPPPPPPPP MEEEEEEEEEEEEE
     void MyVisitor::visit(ast::Break &node) {
-        if (!id_exists("While")) {
+        if (this->in_while == 0) {
             errorUnexpectedBreak(node.line);
         }
     }
 
     void MyVisitor::visit(ast::Continue &node) {
-        if (!id_exists("While")) {
-            errorUnexpectedBreak(node.line);
+        if (this->in_while == 0) {
+            errorUnexpectedContinue(node.line);
         }
     }
 
@@ -341,7 +405,7 @@ namespace output {
         }
         const SymTableEntry *id_entry = id_exists(this->current_function_name);
         ast::BuiltInType return_type = id_entry->ret_type;
-        if ((node.exp && node.exp->type != return_type) || (node.exp == nullptr && return_type != ast::BuiltInType::VOID)){
+        if ((node.exp && !matching_types(return_type, node.exp->type) ) || (node.exp == nullptr && return_type != ast::BuiltInType::VOID)){
             errorMismatch(node.line);
         }
     }
@@ -360,15 +424,13 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::While &node) {
-        print_indented("While");
-
-        enter_child();
         node.condition->accept(*this);
-        leave_child();
-
-        enter_last_child();
+        this->in_while++;
+        this->begin_Scope();
         node.body->accept(*this);
-        leave_child();
+        this->end_scope();
+        this->in_while--;
+    
     }
 
     void MyVisitor::visit(ast::VarDecl &node) {
@@ -376,7 +438,7 @@ namespace output {
         node.type->accept(*this);
         if (node.init_exp) {
             node.init_exp->accept(*this);
-            if(node.init_exp->type != node.type->type){
+            if(!matching_types(node.type->type , node.init_exp->type )){
                 errorMismatch(node.line);
             }
         }
@@ -399,7 +461,7 @@ namespace output {
             errorUndef(node.line, node.id->value);    
         }else if(id_entry->paramTypes.size() > 0) {
             errorDefAsFunc(node.line, node.id->value);
-        }else if(id_entry->ret_type != node.exp->type){
+        }else if(!matching_types( id_entry->ret_type , node.exp->type)){
             errorMismatch(node.line);
         }
 
@@ -433,7 +495,7 @@ namespace output {
             for(int i = 0 ; i < node.formals->formals.size(); ++i) {
                 parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -i});
             }
-
+            
             const SymTableEntry *entry = this->id_exists(node.id->value);
             if(entry) {
                 errorDef(node.line, node.id->value);
@@ -458,8 +520,13 @@ namespace output {
     void MyVisitor::visit(ast::Funcs &node) {
         for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
             (*it)->accept(*this);
-            this->first_run_on_function_declerations = false;
+            
         }
+        const SymTableEntry* id_entry = id_exists("main");
+        if(id_entry == nullptr || !is_function(id_entry) || id_entry->ret_type != ast::BuiltInType::VOID) {
+                errorMainMissing();
+        }
+        this->first_run_on_function_declerations = false;
         for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
             (*it)->accept(*this);
         }
@@ -506,6 +573,19 @@ namespace output {
     {
         for(auto const & s : this->sym_table){
             for(auto const &d : s){
+                if(d.name == name){
+                    return &d;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    SymTableEntry * MyVisitor :: id_exists_and_change(std::string name)
+    {
+        for(auto  & s : this->sym_table){
+            for(auto  &d : s){
                 if(d.name == name){
                     return &d;
                 }

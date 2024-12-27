@@ -56,7 +56,7 @@ namespace ast {
     Call::Call(std::shared_ptr<ID> func_id)
             : Exp(), func_id(std::move(func_id)), args(std::make_shared<ExpList>()) {}
 
-    Statements::Statements(std::shared_ptr<Statement> statement) : Statement(), statements({std::move(statement)}) {}
+    Statements::Statements(std::shared_ptr<Statement> statement) : Statement(), statements({std::move(statement)}), in_middle_of_braces(false) {}
 
     void Statements::push_front(const std::shared_ptr<Statement> &statement) {
         statements.insert(statements.begin(), statement);
