@@ -4,6 +4,6 @@ enable explicit casting from byte to int ---- DONE
 relop - verifying that both are numerical types -- DONE
 update call type  return value -- DONE
 main function --- DONE
-check VOID in Formals + VarDecl
+check VOID in Formals + VarDecl --- DONE
 check that string is only allowed when print() is in used
 check that IF / WHile get boll exp

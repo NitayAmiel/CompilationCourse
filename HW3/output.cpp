@@ -350,6 +350,14 @@ namespace output {
         for(auto param : id_entry->paramTypes) {
             params_types.push_back(toString(param.type));
         }
+        for(std::shared_ptr<ast::Exp> param : node.args->exps){
+            if(param->type == ast::BuiltInType::VOID){
+                errorPrototypeMismatch(node.line, node.func_id->value, params_types);
+            }
+        }
+        if(node.args->exps.size() == 0 &&  id_entry->paramTypes.at(0).type == ast::BuiltInType::VOID){
+            return;
+        }
         if(node.args->exps.size() != id_entry->paramTypes.size()) {
             errorPrototypeMismatch(node.line, node.func_id->value, params_types);
         }
@@ -436,6 +444,9 @@ namespace output {
     void MyVisitor::visit(ast::VarDecl &node) {
         node.id->accept(*this);
         node.type->accept(*this);
+        if(node.type->type == ast::BuiltInType::VOID){
+            errorMismatch(node.line);
+        }
         if (node.init_exp) {
             node.init_exp->accept(*this);
             if(!matching_types(node.type->type , node.init_exp->type )){
@@ -468,21 +479,16 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Formal &node) {
-        print_indented("Formal");
 
-        enter_child();
         node.id->accept(*this);
-        leave_child();
-
-        enter_last_child();
         node.type->accept(*this);
-        leave_child();
     }
 
     void MyVisitor::visit(ast::Formals &node) {
         for (auto it = node.formals.rbegin(); it != node.formals.rend(); ++it) {
             (*it)->accept(*this);
         }
+
     }
 
     void MyVisitor::visit(ast::FuncDecl &node) {
@@ -495,7 +501,9 @@ namespace output {
             for(int i = 0 ; i < node.formals->formals.size(); ++i) {
                 parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -i});
             }
-            
+            if(parameters.size() == 0){
+                parameters.push_back({"dummy", ast::BuiltInType::VOID});
+            }
             const SymTableEntry *entry = this->id_exists(node.id->value);
             if(entry) {
                 errorDef(node.line, node.id->value);
@@ -510,6 +518,9 @@ namespace output {
             // TO DO 
             // maintain the offset and symtable
             for(auto & param : id_entry->paramTypes){
+                if(param.type == ast::BuiltInType::VOID){
+                    break;
+                }
                 this->scope_printer.emitVar(param.name, param.type, param.offset);
             }
             node.body->accept(*this);
