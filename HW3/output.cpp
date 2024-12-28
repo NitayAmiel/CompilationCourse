@@ -175,13 +175,11 @@ namespace output {
     }
 
 
-// TO DO  :  updating the Exp->type
     void MyVisitor::visit(ast::Num &node) {
         node.type = ast::BuiltInType::INT;
     }
 
     void MyVisitor::visit(ast::NumB &node) {
-        // to check sizes of numb
         if(node.value > 127 || node.value < -128) {
             errorByteTooLarge(node.line, node.value);
         }
@@ -204,23 +202,6 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::BinOp &node) {
-        //std::string op;
-
-        /*switch (node.op) {
-            case ast::BinOpType::ADD:
-                op = "+";
-                break;
-            case ast::BinOpType::SUB:
-                op = "-";
-                break;
-            case ast::BinOpType::MUL:
-                op = "*";
-                break;
-            case ast::BinOpType::DIV:
-                op = "/";
-                break;
-        }*/
-
         node.left->accept(*this);
         node.right->accept(*this);
         if(!is_numerical(node.left->type) || !is_numerical(node.right->type)){
@@ -234,29 +215,7 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::RelOp &node) {
-        std::string op;
-
         node.type = ast::BuiltInType::BOOL;
-        /*switch (node.op) {
-            case ast::RelOpType::EQ:
-                op = "==";
-                break;
-            case ast::RelOpType::NE:
-                op = "!=";
-                break;
-            case ast::RelOpType::LT:
-                op = "<";
-                break;
-            case ast::RelOpType::LE:
-                op = "<=";
-                break;
-            case ast::RelOpType::GT:
-                op = ">";
-                break;
-            case ast::RelOpType::GE:
-                op = ">=";
-                break;
-        }*/
 
         node.left->accept(*this);
         node.right->accept(*this);
@@ -280,7 +239,6 @@ namespace output {
         }
         node.type = node.target_type->type;
         try {
-        // Attempt to dynamically cast Parent* to ChildA*
         std::shared_ptr<ast::ID> id_obj = std::dynamic_pointer_cast<ast::ID>(node.exp);
         if (id_obj) {
             SymTableEntry* id_entry = id_exists_and_change(id_obj->value);
@@ -345,9 +303,13 @@ namespace output {
         }else if(is_function(id_entry) == false) {
             errorDefAsVar(node.line, node.func_id->value);
         }
+        bool is_print = id_entry->name.find("print") != std::string::npos;
         node.args->accept(*this);
         std::vector<std::string> params_types ;
         for(auto param : id_entry->paramTypes) {
+            if(!is_print && param.type == ast::BuiltInType::STRING) {
+                errorMismatch(node.args->line);
+            }
             params_types.push_back(toString(param.type));
         }
         for(std::shared_ptr<ast::Exp> param : node.args->exps){
@@ -392,7 +354,6 @@ namespace output {
         ////////////////////////////////
     }
 
-// Shaychuck - IDK HELPPPPPPPPPPPP MEEEEEEEEEEEEE
     void MyVisitor::visit(ast::Break &node) {
         if (this->in_while == 0) {
             errorUnexpectedBreak(node.line);
@@ -406,13 +367,15 @@ namespace output {
     }
 
 
-// Nitay ush
     void MyVisitor::visit(ast::Return &node) {
         if (node.exp) {
             node.exp->accept(*this);
         }
         const SymTableEntry *id_entry = id_exists(this->current_function_name);
         ast::BuiltInType return_type = id_entry->ret_type;
+        if(return_type == ast::BuiltInType::STRING){
+            errorMismatch(node.line);
+        }
         if ((node.exp && !matching_types(return_type, node.exp->type) ) || (node.exp == nullptr && return_type != ast::BuiltInType::VOID)){
             errorMismatch(node.line);
         }
@@ -420,6 +383,9 @@ namespace output {
 
     void MyVisitor::visit(ast::If &node) {
         node.condition->accept(*this);
+        if(node.condition->type == ast::BuiltInType::BOOL){
+            errorMismatch(node.condition->line);
+        }
         this->begin_Scope();
         node.then->accept(*this);
         this->end_scope();
@@ -433,6 +399,9 @@ namespace output {
 
     void MyVisitor::visit(ast::While &node) {
         node.condition->accept(*this);
+        if(node.condition->type != ast::BuiltInType::BOOL){
+            errorMismatch(node.condition->line);
+        }
         this->in_while++;
         this->begin_Scope();
         node.body->accept(*this);
@@ -449,6 +418,9 @@ namespace output {
         }
         if (node.init_exp) {
             node.init_exp->accept(*this);
+            if(node.init_exp->type == ast::BuiltInType::STRING){
+                errorMismatch(node.init_exp->line);
+            }
             if(!matching_types(node.type->type , node.init_exp->type )){
                 errorMismatch(node.line);
             }
@@ -467,6 +439,9 @@ namespace output {
     void MyVisitor::visit(ast::Assign &node) {
         node.id->accept(*this);
         node.exp->accept(*this);
+        if(node.exp->type == ast::BuiltInType::STRING){
+            errorMismatch(node.exp->line);
+        }
         const SymTableEntry* id_entry = id_exists(node.id->value);
         if(id_entry == nullptr) {
             errorUndef(node.line, node.id->value);    
@@ -495,6 +470,9 @@ namespace output {
         if(this->first_run_on_function_declerations){
             node.id->accept(*this);
             node.return_type->accept(*this);
+            if(node.return_type->type == ast::BuiltInType::STRING){
+                errorMismatch(node.return_type->line);
+            }
             node.formals->accept(*this);
 
             std::vector<VariableAttributes> parameters;
