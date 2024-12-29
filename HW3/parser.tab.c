@@ -1309,7 +1309,7 @@ yyreduce:
 
   case 15: /* Statement: LBRACE Statements RBRACE  */
 #line 83 "parser.y"
-                                    {yyval = yyvsp[-1];}
+                                    {std::dynamic_pointer_cast<ast::Statements>(yyvsp[-1])->in_middle_of_braces = true;yyval = yyvsp[-1];}
 #line 1314 "parser.tab.c"
     break;
 

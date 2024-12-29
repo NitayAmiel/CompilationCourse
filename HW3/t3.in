@@ -1,0 +1,3 @@
+void main() {
+    int b = c + 1; // Error: variable 'c' is not defined.
+}

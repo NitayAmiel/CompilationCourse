@@ -230,15 +230,17 @@ namespace output {
         node.exp->accept(*this);
         node.target_type->accept(*this);
         ast::BuiltInType target = node.target_type->type;
-        ast::BuiltInType casted = node.type ;
+        ast::BuiltInType casted = node.exp->type ;
         if(casted == target){
+            node.type = node.target_type->type;
             return;
         }
         if(!is_numerical(target) || !is_numerical(casted)) {
             errorMismatch(node.line);
         }
         node.type = node.target_type->type;
-        try {
+      
+      /*  try {
         std::shared_ptr<ast::ID> id_obj = std::dynamic_pointer_cast<ast::ID>(node.exp);
         if (id_obj) {
             SymTableEntry* id_entry = id_exists_and_change(id_obj->value);
@@ -255,7 +257,7 @@ namespace output {
         }
         catch (const std::bad_cast&) {
             return;
-        }
+        }*/
     }
 
     void MyVisitor::visit(ast::Not &node) {
@@ -383,7 +385,7 @@ namespace output {
 
     void MyVisitor::visit(ast::If &node) {
         node.condition->accept(*this);
-        if(node.condition->type == ast::BuiltInType::BOOL){
+        if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.condition->line);
         }
         this->begin_Scope();
@@ -477,7 +479,7 @@ namespace output {
 
             std::vector<VariableAttributes> parameters;
             for(int i = 0 ; i < node.formals->formals.size(); ++i) {
-                parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -i});
+                parameters.push_back({node.formals->formals[i]->id->value, node.formals->formals[i]->type->type, -(i+1)});
             }
             if(parameters.size() == 0){
                 parameters.push_back({"dummy", ast::BuiltInType::VOID});
@@ -499,7 +501,8 @@ namespace output {
                 if(param.type == ast::BuiltInType::VOID){
                     break;
                 }
-                this->scope_printer.emitVar(param.name, param.type, param.offset);
+                this->insert_variable(param.name, param.type, &param.offset);
+                //this->scope_printer.emitVar(param.name, param.type, param.offset);
             }
             node.body->accept(*this);
             this->end_scope();
@@ -507,9 +510,9 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Funcs &node) {
+
         for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
             (*it)->accept(*this);
-            
         }
         const SymTableEntry* id_entry = id_exists("main");
         if(id_entry == nullptr || !is_function(id_entry) || id_entry->ret_type != ast::BuiltInType::VOID) {
@@ -521,14 +524,16 @@ namespace output {
         }
     }
 
-    void MyVisitor :: insert_variable(std::string name, ast::BuiltInType type)
+    void MyVisitor :: insert_variable(std::string name, ast::BuiltInType type, const int* offset_ptr) 
     {
-        int offset = this->offset_table.back();
+        int offset = offset_ptr ? *offset_ptr : this->offset_table.back();
         std::vector<VariableAttributes> dummy;
         SymTableEntry element = {name, type, dummy, offset};
         this->sym_table.back().push_back(element);
         this->scope_printer.emitVar(name, type, offset);
-        this->offset_table.back()+= SIZE_OF_TYPE;
+        if(offset_ptr == nullptr) {
+            this->offset_table.back()+= SIZE_OF_TYPE;
+        }
     }
 
     void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params)
@@ -537,6 +542,9 @@ namespace output {
         this->sym_table.front().push_back(element);
         std::vector<ast::BuiltInType> params_array;
         for(auto const &param : params){
+            if(param.type == ast::BuiltInType::VOID){
+                break;
+            }
             params_array.push_back(param.type);
         }
         this->scope_printer.emitFunc(name, return_type, params_array);

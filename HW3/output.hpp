@@ -91,7 +91,6 @@ namespace output {
         std::vector<std::vector<SymTableEntry>> sym_table;
         std::vector<int> offset_table;
         std::map<std::string, TypeTableEntry> type_table;
-        ScopePrinter scope_printer;
         std::string current_function_name;
         unsigned int in_while;
         bool first_run_on_function_declerations;
@@ -105,16 +104,17 @@ namespace output {
         // void enter_last_child();
 
         // void leave_child();
-        void insert_variable(std::string name, ast::BuiltInType type);
-        void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params);
+        void insert_variable(std::string name, ast::BuiltInType type, const int* offset_ptr = nullptr);
+        void insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params);
         void begin_Scope();
         void end_scope();
         const SymTableEntry* id_exists(std::string name);
-        SymTableEntry * MyVisitor :: id_exists_and_change(std::string name);
+        SymTableEntry *  id_exists_and_change(std::string name);
 
        // bool resolved_forward_references();
 
     public:
+        ScopePrinter scope_printer;
         MyVisitor();
 
         void visit(ast::Num &node) override;
