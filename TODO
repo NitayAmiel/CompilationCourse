@@ -8,5 +8,11 @@ check VOID in Formals + VarDecl --- DONE
 check that string is only allowed when print() is in used --- DONE
 check that IF / WHile get boll exp -- DONE
 
-check if arguments are already in the symtable
-error def as func and error def as var in case of x = c + 1
+check if arguments are already in the symtable --- DONE
+error def as func and error def as var in case of x = c + 1 -- DONE
+
+
+to check if there is need for space in printing prototype
+to check if we need to use errorDef or errorDefAsVar in FuncDecl
+to check if we need to return the line of the entire function or the parameter itself
+מה קודם - הקיום של main או התקינות של הקוד

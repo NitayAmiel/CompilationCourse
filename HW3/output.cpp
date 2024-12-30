@@ -44,6 +44,22 @@ namespace output {
         }
     }
 
+    static std::string toStringCapitalLetters(ast::BuiltInType type) {
+        switch (type) {
+            case ast::BuiltInType::INT:
+                return "INT";
+            case ast::BuiltInType::BOOL:
+                return "BOOL";
+            case ast::BuiltInType::BYTE:
+                return "BYTE";
+            case ast::BuiltInType::VOID:
+                return "VOID";
+            case ast::BuiltInType::STRING:
+                return "STRING";
+            default:
+                return "UNKNOWN";
+        }
+    }
     /* Error handling functions */
 
     void errorLex(int lineno) {
@@ -165,7 +181,6 @@ namespace output {
         os << "---end global scope---" << std::endl;
         return os;
     }
-
 
 
     MyVisitor::MyVisitor(){
@@ -336,7 +351,7 @@ namespace output {
             if(!is_print && param.type == ast::BuiltInType::STRING) {
                 errorMismatch(node.args->line);
             }
-            params_types.push_back(toString(param.type));
+            params_types.push_back(toStringCapitalLetters(param.type));
         }
         for(std::shared_ptr<ast::Exp> param : node.args->exps){
             check_error_definitons(param);
@@ -344,6 +359,7 @@ namespace output {
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
         }
+        node.type = id_entry->ret_type;
         if(node.args->exps.size() == 0 &&  id_entry->paramTypes.at(0).type == ast::BuiltInType::VOID){
             return;
         }
@@ -355,7 +371,6 @@ namespace output {
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
         }
-        node.type = id_entry->ret_type;
     }
 
 
@@ -413,7 +428,7 @@ namespace output {
         node.condition->accept(*this);
         check_error_definitons(node.condition);
         if(node.condition->type != ast::BuiltInType::BOOL){
-            errorMismatch(node.condition->line);
+            errorMismatch(node.line);
         }
         this->begin_Scope();
         node.then->accept(*this);
@@ -430,7 +445,7 @@ namespace output {
         node.condition->accept(*this); 
         check_error_definitons(node.condition);
         if(node.condition->type != ast::BuiltInType::BOOL){
-            errorMismatch(node.condition->line);
+            errorMismatch(node.line);
         }
         this->in_while++;
         this->begin_Scope();
@@ -448,6 +463,7 @@ namespace output {
         }
         if (node.init_exp) {
             node.init_exp->accept(*this);
+            check_error_definitons(node.init_exp);
             if(node.init_exp->type == ast::BuiltInType::STRING){
                 errorMismatch(node.init_exp->line);
             }
@@ -534,7 +550,7 @@ namespace output {
                     if(is_function(id_entry_of_param)){
                         errorDefAsFunc(node.formals->formals[i]->line, param.name);
                     }else{
-                        errorDefAsVar(node.formals->formals[i]->line, param.name);
+                        errorDef(node.formals->formals[i]->line, param.name);
                     }
                 }
                 if(param.type == ast::BuiltInType::VOID){
@@ -554,7 +570,7 @@ namespace output {
             (*it)->accept(*this);
         }
         const SymTableEntry* id_entry = id_exists("main");
-        if(id_entry == nullptr || !is_function(id_entry) || id_entry->ret_type != ast::BuiltInType::VOID) {
+        if(id_entry == nullptr || !is_function(id_entry) || id_entry->ret_type != ast::BuiltInType::VOID || id_entry->paramTypes.size() > 1 || id_entry->paramTypes.at(0).type != ast::BuiltInType::VOID) {
                 errorMainMissing();
         }
         this->first_run_on_function_declerations = false;
