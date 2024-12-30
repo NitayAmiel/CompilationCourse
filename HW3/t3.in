@@ -1,3 +1,7 @@
-void main() {
-    int b = c + 1; // Error: variable 'c' is not defined.
+void main(int foo){
+    int x;
+}
+
+int foo(){
+    return 1;
 }

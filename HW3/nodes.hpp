@@ -32,7 +32,9 @@ namespace ast {
         BOOL,
         BYTE,
         INT,
-        STRING
+        STRING,
+        DEF_AS_FUNC,
+        UN_DEF
     };
 
     /* Base class for all AST nodes */

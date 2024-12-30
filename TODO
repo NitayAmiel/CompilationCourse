@@ -7,3 +7,6 @@ main function --- DONE
 check VOID in Formals + VarDecl --- DONE
 check that string is only allowed when print() is in used --- DONE
 check that IF / WHile get boll exp -- DONE
+
+check if arguments are already in the symtable
+error def as func and error def as var in case of x = c + 1

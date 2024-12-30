@@ -4,6 +4,18 @@
 namespace output {
     /* Helper functions */
 
+
+    static void check_error_definitons(std::shared_ptr<ast::Exp> node){
+        if(node == nullptr){
+            return;
+        }
+        if(node->type == ast::BuiltInType::UN_DEF){
+            errorUndef(node->line, std::dynamic_pointer_cast<ast::ID>(node)->value);
+        }
+        if(node->type == ast::BuiltInType::DEF_AS_FUNC){
+            errorDefAsFunc(node->line, std::dynamic_pointer_cast<ast::ID>(node)->value);
+        }
+    }
     static bool matching_types (ast::BuiltInType x, ast::BuiltInType y){
         return (x == y ) || (x == ast::BuiltInType::INT && y == ast::BuiltInType::BYTE);
     }
@@ -196,14 +208,18 @@ namespace output {
 
     void MyVisitor::visit(ast::ID &node) { 
         const SymTableEntry* id_entry = id_exists(node.value);
-        if(id_entry && !is_function(id_entry)){
-            node.type = id_entry->ret_type;
+        if(id_entry ){
+            node.type = !is_function(id_entry) ? id_entry->ret_type : ast::BuiltInType::DEF_AS_FUNC;
+        }else{
+            node.type = ast::BuiltInType::UN_DEF;
         }
     }
 
     void MyVisitor::visit(ast::BinOp &node) {
         node.left->accept(*this);
         node.right->accept(*this);
+        check_error_definitons(node.left);
+        check_error_definitons(node.right);
         if(!is_numerical(node.left->type) || !is_numerical(node.right->type)){
             errorMismatch(node.line);
         }
@@ -219,6 +235,8 @@ namespace output {
 
         node.left->accept(*this);
         node.right->accept(*this);
+        check_error_definitons(node.left);
+        check_error_definitons(node.right);
         if(!is_numerical(node.left->type) || !is_numerical(node.right->type)){
             errorMismatch(node.line);
         }
@@ -231,6 +249,7 @@ namespace output {
         node.target_type->accept(*this);
         ast::BuiltInType target = node.target_type->type;
         ast::BuiltInType casted = node.exp->type ;
+        check_error_definitons(node.exp);
         if(casted == target){
             node.type = node.target_type->type;
             return;
@@ -262,6 +281,7 @@ namespace output {
 
     void MyVisitor::visit(ast::Not &node) {
         node.exp->accept(*this);
+        check_error_definitons(node.exp);
         if(node.exp->type != ast::BuiltInType::BOOL){
             errorMismatch(node.line);
         }
@@ -271,6 +291,8 @@ namespace output {
     void MyVisitor::visit(ast::And &node) {
         node.left->accept(*this);
         node.right->accept(*this);
+        check_error_definitons(node.left);
+        check_error_definitons(node.right);
         if(node.left->type != ast::BuiltInType::BOOL || node.right->type != ast::BuiltInType::BOOL){
             errorMismatch(node.line);
         }
@@ -281,6 +303,8 @@ namespace output {
     void MyVisitor::visit(ast::Or &node) {
         node.left->accept(*this);
         node.right->accept(*this);
+        check_error_definitons(node.left);
+        check_error_definitons(node.right);
         if(node.left->type != ast::BuiltInType::BOOL || node.right->type != ast::BuiltInType::BOOL){
             errorMismatch(node.line);
         }
@@ -315,6 +339,7 @@ namespace output {
             params_types.push_back(toString(param.type));
         }
         for(std::shared_ptr<ast::Exp> param : node.args->exps){
+            check_error_definitons(param);
             if(param->type == ast::BuiltInType::VOID){
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
@@ -372,6 +397,7 @@ namespace output {
     void MyVisitor::visit(ast::Return &node) {
         if (node.exp) {
             node.exp->accept(*this);
+            check_error_definitons(node.exp);
         }
         const SymTableEntry *id_entry = id_exists(this->current_function_name);
         ast::BuiltInType return_type = id_entry->ret_type;
@@ -385,6 +411,7 @@ namespace output {
 
     void MyVisitor::visit(ast::If &node) {
         node.condition->accept(*this);
+        check_error_definitons(node.condition);
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.condition->line);
         }
@@ -400,7 +427,8 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::While &node) {
-        node.condition->accept(*this);
+        node.condition->accept(*this); 
+        check_error_definitons(node.condition);
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.condition->line);
         }
@@ -456,7 +484,6 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Formal &node) {
-
         node.id->accept(*this);
         node.type->accept(*this);
     }
@@ -497,7 +524,19 @@ namespace output {
             const SymTableEntry * id_entry = this->id_exists(node.id->value);
             // TO DO 
             // maintain the offset and symtable
-            for(auto & param : id_entry->paramTypes){
+            
+            
+            const SymTableEntry * id_entry_of_param;
+            for(int i = 0 ; i < id_entry->paramTypes.size(); i++){
+                VariableAttributes param = id_entry->paramTypes[i];
+                id_entry_of_param = this->id_exists(param.name);
+                if(id_entry_of_param){
+                    if(is_function(id_entry_of_param)){
+                        errorDefAsFunc(node.formals->formals[i]->line, param.name);
+                    }else{
+                        errorDefAsVar(node.formals->formals[i]->line, param.name);
+                    }
+                }
                 if(param.type == ast::BuiltInType::VOID){
                     break;
                 }
