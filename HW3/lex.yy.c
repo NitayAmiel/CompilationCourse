@@ -1017,7 +1017,7 @@ case 38:
 /* rule 38 can match eol */
 YY_RULE_SETUP
 #line 52 "scanner.lex"
-{}
+{;}
 	YY_BREAK
 case 39:
 /* rule 39 can match eol */

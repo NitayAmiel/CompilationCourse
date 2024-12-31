@@ -4,16 +4,20 @@
 namespace output {
     /* Helper functions */
 
+    static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line = 0);
 
-    static void check_error_definitons(std::shared_ptr<ast::Exp> node){
+    static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line){
         if(node == nullptr){
             return;
         }
+        if(line == 0){
+            line = node->line;
+        }
         if(node->type == ast::BuiltInType::UN_DEF){
-            errorUndef(node->line, std::dynamic_pointer_cast<ast::ID>(node)->value);
+            errorUndef(line, std::dynamic_pointer_cast<ast::ID>(node)->value);
         }
         if(node->type == ast::BuiltInType::DEF_AS_FUNC){
-            errorDefAsFunc(node->line, std::dynamic_pointer_cast<ast::ID>(node)->value);
+            errorDefAsFunc(line, std::dynamic_pointer_cast<ast::ID>(node)->value);
         }
     }
     static bool matching_types (ast::BuiltInType x, ast::BuiltInType y){
@@ -354,7 +358,7 @@ namespace output {
             params_types.push_back(toStringCapitalLetters(param.type));
         }
         for(std::shared_ptr<ast::Exp> param : node.args->exps){
-            check_error_definitons(param);
+            check_error_definitons(param, node.line);
             if(param->type == ast::BuiltInType::VOID){
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
@@ -426,7 +430,11 @@ namespace output {
 
     void MyVisitor::visit(ast::If &node) {
         node.condition->accept(*this);
-        check_error_definitons(node.condition);
+        if(node.otherwise){
+            check_error_definitons(node.condition,  node.line);
+        }else{
+            check_error_definitons(node.condition,  node.then->line);
+        }
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.line);
         }
@@ -443,7 +451,7 @@ namespace output {
 
     void MyVisitor::visit(ast::While &node) {
         node.condition->accept(*this); 
-        check_error_definitons(node.condition);
+        check_error_definitons(node.condition,  node.line);
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.line);
         }
@@ -485,6 +493,7 @@ namespace output {
     void MyVisitor::visit(ast::Assign &node) {
         node.id->accept(*this);
         node.exp->accept(*this);
+        check_error_definitons(node.exp);
         if(node.exp->type == ast::BuiltInType::STRING){
             errorMismatch(node.exp->line);
         }
@@ -548,9 +557,9 @@ namespace output {
                 id_entry_of_param = this->id_exists(param.name);
                 if(id_entry_of_param){
                     if(is_function(id_entry_of_param)){
-                        errorDefAsFunc(node.formals->formals[i]->line, param.name);
+                        errorDefAsFunc(node.line, param.name);
                     }else{
-                        errorDef(node.formals->formals[i]->line, param.name);
+                        errorDef(node.line, param.name);
                     }
                 }
                 if(param.type == ast::BuiltInType::VOID){

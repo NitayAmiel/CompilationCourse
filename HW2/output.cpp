@@ -257,7 +257,7 @@ namespace output {
 
     void PrintVisitor::visit(ast::If &node) {
         print_indented("If");
-
+        std::cout << node.line << std::endl;
         enter_child();
         node.condition->accept(*this);
         leave_child();
