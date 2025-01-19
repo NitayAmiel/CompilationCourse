@@ -44,7 +44,7 @@ continue     { yylval = std::shared_ptr<ast::Continue>(new ast::Continue()); ret
 -                        { return SUB; }
 \*                        { return MUL; }
 \/                        { return DIV; }
-[a-zA-Z_][a-zA-Z0-9_]*         { yylval = std::make_shared<ast::ID>(yytext); return ID; }
+[a-zA-Z][a-zA-Z0-9]*         { yylval = std::make_shared<ast::ID>(yytext); return ID; }
 0|[1-9][0-9]*                  { yylval = std::make_shared<ast::Num>(yytext); return NUM; }
 0b|[1-9][0-9]*b              { yylval = std::make_shared<ast::NumB>(yytext); return NUM_B; }
 \"([^\n\r\"\\]|\\[rnt"\\])+\"    { yylval = std::make_shared<ast::String>(yytext); return STRING;}

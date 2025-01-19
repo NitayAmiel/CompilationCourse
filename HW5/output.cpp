@@ -4,7 +4,7 @@
 namespace output {
     /* Helper functions */
 
-    static std::string get_type_string(ast::BuiltInType type){
+    static std::string _get_type_string(ast::BuiltInType type){
         switch(type){
             case ast::BuiltInType::INT:
                 return "i32";
@@ -15,6 +15,15 @@ namespace output {
                 //TODO
         }
     }
+
+    static std::string get_type_string(ast::BuiltInType type){
+        return _get_type_string(type) + " ";
+    }
+
+    static std::string get_ptr_type_string(ast::BuiltInType type){
+        return _get_type_string(type) + "* ";
+    }
+
     static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line = 0);
 
     static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line){
@@ -207,8 +216,8 @@ namespace output {
 
     void MyVisitor::visit(ast::Num &node) {
         node.type = ast::BuiltInType::INT;
-        node.reg = this->code_buffer.freshVar();
-        this->code_buffer.emit(node.reg + " = add i32 0, " + node.value);
+
+        node.reg = std::to_string(node.value);
     }
 
     void MyVisitor::visit(ast::NumB &node) {
@@ -216,6 +225,10 @@ namespace output {
             errorByteTooLarge(node.line, node.value);
         }
         node.type = ast::BuiltInType::BYTE;
+
+
+        node.reg = this->code_buffer.freshVar();
+        this->code_buffer.emit(node.reg + " = add i8 0, " + std::to_string(node.value));
     }
 
     void MyVisitor::visit(ast::String &node) {
@@ -224,15 +237,23 @@ namespace output {
 
     void MyVisitor::visit(ast::Bool &node) {
         node.type = ast::BuiltInType::BOOL;
+
+        node.reg = this->code_buffer.freshVar();
+        this->code_buffer.emit(node.reg + " = add i1 0, " + (node.value ? "true" : "false"));
     }
 
     void MyVisitor::visit(ast::ID &node) { 
         const SymTableEntry* id_entry = id_exists(node.value);
-        if(id_entry ){
+        if(id_entry ) {
             node.type = !is_function(id_entry) ? id_entry->ret_type : ast::BuiltInType::DEF_AS_FUNC;
-        }else{
+            if(node.type != ast::BuiltInType::DEF_AS_FUNC) {
+                node.reg = this->code_buffer.freshVar();
+                this->code_buffer.emit(node.reg + " = load " + get_type_string(node.type) + ", " + get_ptr_type_string(node.type) +  "%" + node.value);
+            }
+        }else {
             node.type = ast::BuiltInType::UN_DEF;
         }
+
     }
 
 
@@ -255,22 +276,22 @@ namespace output {
         node.reg = this->code_buffer.freshVar();
         switch (node.op) {
             case ast::BinOpType::ADD:
-                this->code_buffer.emit( node.reg + " = add "  + get_type_string(node.type) + node.left.reg + ", " + node.right.reg  );
+                this->code_buffer.emit( node.reg + " = add "  + get_type_string(node.type) + node.left->reg + ", " + node.right->reg  );
                 break;
             case ast::BinOpType::SUB:
-                this->code_buffer.emit( node.reg + " = sub "  + get_type_string(node.type) + node.left.reg + ", " + node.right.reg  );
+                this->code_buffer.emit( node.reg + " = sub "  + get_type_string(node.type) + node.left->reg + ", " + node.right->reg  );
                 break;
             case ast::BinOpType::MUL:
-                this->code_buffer.emit( node.reg + " = mul "  + get_type_string(node.type) + node.left.reg + ", " + node.right.reg  );
+                this->code_buffer.emit( node.reg + " = mul "  + get_type_string(node.type) + node.left->reg + ", " + node.right->reg  );
                 break;
             case ast::BinOpType::DIV:
                 if(node.type == ast::BuiltInType::INT) {
                     this->code_buffer.emit(
-                            node.reg + " = sdiv " + get_type_string(node.type) + node.left.reg + ", " + node.right.reg);
+                            node.reg + " = sdiv " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
                 }
                 else {
                     this->code_buffer.emit(
-                            node.reg + " = udiv " + get_type_string(node.type) + node.left.reg + ", " + node.right.reg);
+                            node.reg + " = udiv " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
                 }
                 break;
         }
@@ -521,6 +542,11 @@ namespace output {
             }
         }
         insert_variable(node.id->value, node.type->type);
+
+        if(node.init_exp){
+            
+            this->code_buffer.emit( "store " + get_type_string(node.type->type) + node.init_exp->reg + " , "+ get_ptr_type_string(node.type->type) + "%" +node.id->value );
+        }
     }
 
     void MyVisitor::visit(ast::Assign &node) {
@@ -628,9 +654,16 @@ namespace output {
         SymTableEntry element = {name, type, dummy, offset};
         this->sym_table.back().push_back(element);
         //this->scope_printer.emitVar(name, type, offset);
-        if(offset_ptr == nullptr) {
-            this->offset_table.back()+= SIZE_OF_TYPE;
+        if(offset_ptr == nullptr) { // var decl
+            this->offset_table.back() += SIZE_OF_TYPE;
+
+
+            this->code_buffer.emit("%" + name + " = alloca " + get_type_string(type));
         }
+
+
+
+
     }
 
     void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params)

@@ -13,5 +13,5 @@ int main() {
     // Print the AST using the PrintVisitor
     output::MyVisitor Visitor;
     program->accept(Visitor);
-    std::cout << Visitor.scope_printer;
+    std::cout << Visitor.code_buffer;
 }

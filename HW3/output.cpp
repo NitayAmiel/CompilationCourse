@@ -211,7 +211,7 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::NumB &node) {
-        if(node.value > 127 || node.value < -128) {
+        if(node.value > 255 ) {
             errorByteTooLarge(node.line, node.value);
         }
         node.type = ast::BuiltInType::BYTE;
@@ -269,10 +269,10 @@ namespace output {
         ast::BuiltInType target = node.target_type->type;
         ast::BuiltInType casted = node.exp->type ;
         check_error_definitons(node.exp);
-        if(casted == target){
+        /*if(casted == target){
             node.type = node.target_type->type;
             return;
-        }
+        }*/
         if(!is_numerical(target) || !is_numerical(casted)) {
             errorMismatch(node.line);
         }
@@ -302,7 +302,7 @@ namespace output {
         node.exp->accept(*this);
         check_error_definitons(node.exp);
         if(node.exp->type != ast::BuiltInType::BOOL){
-            errorMismatch(node.line);
+            errorMismatch(node.exp->line);
         }
         node.type = ast::BuiltInType::BOOL;
     }
@@ -312,10 +312,13 @@ namespace output {
         node.right->accept(*this);
         check_error_definitons(node.left);
         check_error_definitons(node.right);
-        if(node.left->type != ast::BuiltInType::BOOL || node.right->type != ast::BuiltInType::BOOL){
-            errorMismatch(node.line);
+        if(node.left->type != ast::BuiltInType::BOOL){
+            errorMismatch(node.left->line);
         }
-        
+        if(node.right->type != ast::BuiltInType::BOOL){
+            errorMismatch(node.right->line);
+        }
+    
         node.type = ast::BuiltInType::BOOL;
     }
 
@@ -358,7 +361,7 @@ namespace output {
             params_types.push_back(toStringCapitalLetters(param.type));
         }
         for(std::shared_ptr<ast::Exp> param : node.args->exps){
-            check_error_definitons(param, node.line);
+            check_error_definitons(param);//, node.line);
             if(param->type == ast::BuiltInType::VOID){
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
@@ -430,13 +433,16 @@ namespace output {
 
     void MyVisitor::visit(ast::If &node) {
         node.condition->accept(*this);
-        if(node.otherwise){
-            check_error_definitons(node.condition,  node.line);
+        
+        check_error_definitons(node.condition);
+        /*if(node.otherwise){
+            check_error_definitons(node.condition);//,  node.line);
         }else{
             check_error_definitons(node.condition,  node.then->line);
         }
+        */
         if(node.condition->type != ast::BuiltInType::BOOL){
-            errorMismatch(node.line);
+            errorMismatch(node.condition->line);
         }
         this->begin_Scope();
         node.then->accept(*this);
@@ -451,9 +457,9 @@ namespace output {
 
     void MyVisitor::visit(ast::While &node) {
         node.condition->accept(*this); 
-        check_error_definitons(node.condition,  node.line);
+        check_error_definitons(node.condition);//,  node.line);
         if(node.condition->type != ast::BuiltInType::BOOL){
-            errorMismatch(node.line);
+            errorMismatch(node.condition->line);
         }
         this->in_while++;
         this->begin_Scope();
@@ -538,7 +544,7 @@ namespace output {
             }
             const SymTableEntry *entry = this->id_exists(node.id->value);
             if(entry) {
-                errorDef(node.line, node.id->value);
+                errorDef(node.id->line, node.id->value);
             } else {
                 this->insert_func(node.id->value, node.return_type->type, parameters);
             }
@@ -557,9 +563,9 @@ namespace output {
                 id_entry_of_param = this->id_exists(param.name);
                 if(id_entry_of_param){
                     if(is_function(id_entry_of_param)){
-                        errorDefAsFunc(node.line, param.name);
+                        errorDefAsFunc(node.formals->formals[i]->line, param.name);
                     }else{
-                        errorDef(node.line, param.name);
+                        errorDef(node.formals->formals[i]->line, param.name);
                     }
                 }
                 if(param.type == ast::BuiltInType::VOID){
