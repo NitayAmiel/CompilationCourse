@@ -4,6 +4,17 @@
 namespace output {
     /* Helper functions */
 
+    static std::string get_type_string(ast::BuiltInType type){
+        switch(type){
+            case ast::BuiltInType::INT:
+                return "i32";
+            case ast::BuiltInType::BYTE:
+                return "i8";
+            case ast::BuiltInType::BOOL:
+                return "i1";
+                //TODO
+        }
+    }
     static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line = 0);
 
     static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line){
@@ -224,6 +235,7 @@ namespace output {
         }
     }
 
+
     void MyVisitor::visit(ast::BinOp &node) {
         node.left->accept(*this);
         node.right->accept(*this);
@@ -240,7 +252,7 @@ namespace output {
 
         std::string type_string = get_type_string(node.type);
 
-        node.reg= this->code_buffer.freshVar();
+        node.reg = this->code_buffer.freshVar();
         switch (node.op) {
             case ast::BinOpType::ADD:
                 this->code_buffer.emit( node.reg + " = add "  + get_type_string(node.type) + node.left.reg + ", " + node.right.reg  );
