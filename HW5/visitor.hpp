@@ -65,7 +65,7 @@ public:
     virtual void visit(ast::Break &node) = 0; // Shay
 
     virtual void visit(ast::Continue &node) = 0; // Shay
-    virtual void visit(ast::Return &node) = 0; // Nitay
+    virtual void visit(ast::Return &node) = 0; // Nitay - done
 
     virtual void visit(ast::If &node) = 0; // Shay
 
@@ -73,15 +73,15 @@ public:
 
     virtual void visit(ast::VarDecl &node) = 0;
 
-    virtual void visit(ast::Assign &node) = 0; // Nitay
+    virtual void visit(ast::Assign &node) = 0; // Nitay - done
 
-    virtual void visit(ast::Formal &node) = 0; // Nitay
+    virtual void visit(ast::Formal &node) = 0; // Nitay - done
 
-    virtual void visit(ast::Formals &node) = 0; // Nitay
+    virtual void visit(ast::Formals &node) = 0; // Nitay - done
 
-    virtual void visit(ast::FuncDecl &node) = 0; // Nitay
+    virtual void visit(ast::FuncDecl &node) = 0; // Nitay - done
 
-    virtual void visit(ast::Funcs &node) = 0; // Nitay
+    virtual void visit(ast::Funcs &node) = 0; // Nitay - done
 };
 
 #endif //VISITOR_HPP

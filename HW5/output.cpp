@@ -1,9 +1,35 @@
 #include "output.hpp"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
 namespace output {
     /* Helper functions */
 
+    static std::string loadFileContent(const std::string& filename) {
+        std::ifstream file(filename);
+        if (!file) {
+            throw std::runtime_error("Unable to open file: " + filename);
+        }
+
+        std::ostringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
+
+    static bool return_occured(const std::string & str_func){
+        return str_func.empty();
+    }
+    static void signal_return_occured( std::string & str_func){
+        str_func = "";
+    }
+
+
+    // static std::string create_def_func( ast::BuiltInType ret_type,std::string name, std::vector<ast::BuiltInType>& args){
+    //     std::string res = "define " + get_type_string(ret_type) + "@" + name + "(" ;
+       
+    //     }
+    // }
     static std::string _get_type_string(ast::BuiltInType type){
         switch(type){
             case ast::BuiltInType::INT:
@@ -12,6 +38,8 @@ namespace output {
                 return "i8";
             case ast::BuiltInType::BOOL:
                 return "i1";
+            case ast::BuiltInType::VOID:
+                return "void";
                 //TODO
         }
     }
@@ -22,6 +50,24 @@ namespace output {
 
     static std::string get_ptr_type_string(ast::BuiltInType type){
         return _get_type_string(type) + "* ";
+    }
+
+    static std::string create_string_of_params(std::vector<ast::BuiltInType>& args){
+         bool first_param = true;
+         std::string res = "(";
+        for(auto const &param : args){
+            if(param == ast::BuiltInType::VOID){
+                break;
+            }
+            if(!first_param){
+                res += ", ";
+            }else{
+                first_param = false;
+            }
+            res += get_type_string(param);
+        }
+        res += ")";
+        return res;
     }
 
     static void check_error_definitons(std::shared_ptr<ast::Exp> node, int line = 0);
@@ -163,7 +209,8 @@ namespace output {
     CodeBuffer::CodeBuffer() : labelCount(0), varCount(0), stringCount(0) {}
 
     std::string CodeBuffer::freshLabel() {
-        return "%label_" + std::to_string(labelCount++);
+        //return "%label_" + std::to_string(labelCount++); this is the segel code
+        return "label_" + std::to_string(labelCount++);
     }
 
     std::string CodeBuffer::freshVar() {
@@ -196,14 +243,18 @@ namespace output {
 
 
     MyVisitor::MyVisitor(){
+        this->code_buffer.emit(loadFileContent("print_functions.llvm"));
+
         std::vector<SymTableEntry> initial_vector;
         this->sym_table.push_back(initial_vector);
         VariableAttributes print_param_attributes = { "param", ast::BuiltInType::STRING , 0};
         std::vector<VariableAttributes> print_params = {print_param_attributes};
         VariableAttributes printi_param_attributes = { "param", ast::BuiltInType::INT , 0};
         std::vector<VariableAttributes> printi_params = {printi_param_attributes};
-        this->insert_func("print", ast::BuiltInType::VOID, print_params);
-        this->insert_func("printi", ast::BuiltInType::VOID, printi_params);
+
+        bool no_need_print_decl_defs = true;
+        this->insert_func("print", ast::BuiltInType::VOID, print_params, no_need_print_decl_defs);
+        this->insert_func("printi", ast::BuiltInType::VOID, printi_params, no_need_print_decl_defs);
         //this->insert_func("printi", ast::BuiltInType::VOID, std::vector<ast::BuiltInType>({ast::BuiltInType::INT}));
         this->offset_table.push_back(0);
         
@@ -426,6 +477,8 @@ namespace output {
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
         }
+
+
     }
 
 
@@ -477,6 +530,13 @@ namespace output {
         if ((node.exp && !matching_types(return_type, node.exp->type) ) || (node.exp == nullptr && return_type != ast::BuiltInType::VOID)){
             errorMismatch(node.line);
         }
+        
+        std::string return_str = "ret " + get_type_string(return_type);
+        if(node.exp){
+            return_str += node.exp->reg;
+        }
+        this->code_buffer.emit(return_str);
+        signal_return_occured(this->current_function_name);
     }
 
     void MyVisitor::visit(ast::If &node) {
@@ -565,6 +625,7 @@ namespace output {
             errorMismatch(node.line);
         }
 
+        this->code_buffer.emit( "store " + get_type_string(node.exp->type) + node.exp->reg + " , "+ get_ptr_type_string(id_entry->ret_type) + "%" + node.id->value );
     }
 
     void MyVisitor::visit(ast::Formal &node) {
@@ -601,7 +662,7 @@ namespace output {
             } else {
                 this->insert_func(node.id->value, node.return_type->type, parameters);
             }
-        
+
         }else{
             this->begin_Scope();
             this->current_function_name = node.id->value;
@@ -609,6 +670,7 @@ namespace output {
             // TO DO 
             // maintain the offset and symtable
             
+            std::vector<ast::BuiltInType> params_array;
             
             const SymTableEntry * id_entry_of_param;
             for(int i = 0 ; i < id_entry->paramTypes.size(); i++){
@@ -626,8 +688,26 @@ namespace output {
                 }
                 this->insert_variable(param.name, param.type, &param.offset);
                 //this->scope_printer.emitVar(param.name, param.type, param.offset);
+                params_array.push_back(param.type);
             }
+
+            this->code_buffer.emit("define " + get_type_string(id_entry->ret_type) + "@" + id_entry->name + create_string_of_params(params_array) + " {");
+            this->code_buffer.emit(this->code_buffer.freshLabel() + ":");
+
             node.body->accept(*this);
+
+            if(!return_occured(this->current_function_name) ){
+                std::string return_cmd = "ret " + get_type_string(id_entry->ret_type);
+                if(is_numerical(id_entry->ret_type)){
+                    return_cmd += " 0";
+                }else if(id_entry->ret_type == ast::BuiltInType::BOOL){
+                    return_cmd += " false";
+                }
+                this->code_buffer.emit(return_cmd);
+            }
+
+            this->code_buffer.emit("}");
+            
             this->end_scope();
         }
     }
@@ -666,17 +746,22 @@ namespace output {
 
     }
 
-    void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params)
+    void MyVisitor :: insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params, bool without_printing)
     {
         SymTableEntry element = {name, return_type, params, 0};
         this->sym_table.front().push_back(element);
         std::vector<ast::BuiltInType> params_array;
+        
+        if(without_printing){
+            return;
+        }
         for(auto const &param : params){
             if(param.type == ast::BuiltInType::VOID){
                 break;
             }
             params_array.push_back(param.type);
         }
+        //this->code_buffer.emit("declare " + get_type_string(return_type) + " @" + name + create_string_of_params(params_array));
         //this->scope_printer.emitFunc(name, return_type, params_array);
     }
 

@@ -130,7 +130,7 @@ namespace output {
 
         // void leave_child();
         void insert_variable(std::string name, ast::BuiltInType type, const int* offset_ptr = nullptr);
-        void insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params);
+        void insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params, bool without_printing = false);
         void begin_Scope();
         void end_scope();
         const SymTableEntry* id_exists(std::string name);

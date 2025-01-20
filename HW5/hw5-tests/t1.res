@@ -28,12 +28,16 @@ define void @print(i8*) {
 
 define void @main() {
 label_0:
-%x = alloca i32 
-store i32 10 , i32* %x
-%t0 = add i32 1, 4
-%t1 = load i32 , i32* %x
-%t2 = add i32 %t0, %t1
-%result = alloca i32 
-store i32 %t2 , i32* %result
+%t0 = add i1 0, true
+%t1 = add i1 0, false
+%t2 = add i1 0, true
+%t3 = add i1 0, false
+%t4 = add i1 0, false
+%t5 = add i1 0, true
+ret void 
+}
+define void @printByValue(i1 ) {
+label_1:
+%t6 = load i1 , i1* %val
 ret void 
 }
