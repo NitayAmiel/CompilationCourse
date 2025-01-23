@@ -6,7 +6,15 @@
 namespace output {
     /* Helper functions */
 
-
+    static std::string check_str_divide_by_0(std::string reg_name, std::string tmp_reg,  std::string error_msg){
+        int size_of_str = MESSAGE_ERROR_SIZE;
+        std::string res = tmp_reg + " = icmp eq i32 " + reg_name + ", 0\n";
+        res +=" br i1 " + tmp_reg + ", label %zero_case, label %non_zero_case\n";
+        res += "zero_case:\n %msg_ptr = getelementptr  [" +  std::to_string(size_of_str) + " x i8], [" + std::to_string(size_of_str) + " x i8]* " + error_msg + ", i32 0, i32 0\n call void @print(i8* %msg_ptr)\n call void @exit(i32 1)\n br label %non_zero_case\n non_zero_case:\n";
+        return res; 
+    }
+    
+    
     static std::string get_register_name(const SymTableEntry& id_entry ){
         return "%" + std::to_string(-(id_entry.offset+1));
     }
@@ -272,7 +280,7 @@ namespace output {
 
     MyVisitor::MyVisitor(){
         this->code_buffer.emit(loadFileContent("print_functions.llvm"));
-
+        this->error_msg_divide_0_ptr = this->code_buffer.emitString("Error division by zero");
         std::vector<SymTableEntry> initial_vector;
         this->sym_table.push_back(initial_vector);
         VariableAttributes print_param_attributes = { "param", ast::BuiltInType::STRING , 0};
@@ -376,6 +384,7 @@ namespace output {
                 break;
             case ast::BinOpType::DIV:
                 if(node.type == ast::BuiltInType::INT) {
+                    this->code_buffer.emit(check_str_divide_by_0(node.right->reg, this->code_buffer.freshVar(), this->error_msg_divide_0_ptr));
                     this->code_buffer.emit(
                             node.reg + " = sdiv " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
                 }
@@ -898,7 +907,7 @@ namespace output {
             this->offset_table.back() += SIZE_OF_TYPE;
 
 
-            this->code_buffer.emit("%" + name + " = alloca " + get_type_string(type));
+            this->code_buffer.emit("%v" + name + " = alloca " + get_type_string(type));
         }
 
 

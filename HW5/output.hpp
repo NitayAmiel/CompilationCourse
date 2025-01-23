@@ -9,6 +9,7 @@
 #include "visitor.hpp"
 #include "nodes.hpp"
 
+const int MESSAGE_ERROR_SIZE = std::string("Error division by zero").length()+1;
 const unsigned int SIZE_OF_TYPE = 1;
 namespace output {
     /* Error handling functions */
@@ -120,6 +121,7 @@ namespace output {
         unsigned int in_while;
         std::string exit_label, loop_head_label;
         bool first_run_on_function_declerations;
+        std::string error_msg_divide_0_ptr;
 
         /* Helper function to print a string with the current indentation */
         //void print_indented(const std::string &str);
