@@ -44,13 +44,13 @@ public:
 
     virtual void visit(ast::BinOp &node) = 0;
 
-    virtual void visit(ast::RelOp &node) = 0; // Shay 
+    virtual void visit(ast::RelOp &node) = 0; // Shay - tov
 
-    virtual void visit(ast::Not &node) = 0; // Shay
+    virtual void visit(ast::Not &node) = 0; // Shay - sababa
 
-    virtual void visit(ast::And &node) = 0; // Shay
+    virtual void visit(ast::And &node) = 0; // Shay - beseder
 
-    virtual void visit(ast::Or &node) = 0; // Shay
+    virtual void visit(ast::Or &node) = 0; // Shay - OK
 
     virtual void visit(ast::Type &node) = 0; 
 
@@ -60,16 +60,17 @@ public:
 
     virtual void visit(ast::Call &node) = 0; // Nitay
 
-    virtual void visit(ast::Statements &node) = 0; 
+    virtual void visit(ast::Statements &node) = 0; // added a bit
 
-    virtual void visit(ast::Break &node) = 0; // Shay
+    virtual void visit(ast::Break &node) = 0; // Shay - done
 
-    virtual void visit(ast::Continue &node) = 0; // Shay
+    virtual void visit(ast::Continue &node) = 0; // Shay - OK
+
     virtual void visit(ast::Return &node) = 0; // Nitay - done
 
-    virtual void visit(ast::If &node) = 0; // Shay
+    virtual void visit(ast::If &node) = 0; // Shay - tov
 
-    virtual void visit(ast::While &node) = 0; // Shay
+    virtual void visit(ast::While &node) = 0; // Shay - beseder
 
     virtual void visit(ast::VarDecl &node) = 0;
 

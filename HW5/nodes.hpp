@@ -55,11 +55,17 @@ namespace ast {
     public: 
         BuiltInType type;
         std::string reg;
+        std::string true_label;
+        std::string false_label;
+
         Exp() : type(BuiltInType::VOID) {};
     };
 
     /* Base class for all statements */
     class Statement : virtual public Node {
+    public:
+        std::string next_label;
+
     };
 
     /* Number literal */

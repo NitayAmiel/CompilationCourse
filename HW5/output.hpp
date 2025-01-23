@@ -118,6 +118,7 @@ namespace output {
         std::map<std::string, TypeTableEntry> type_table;
         std::string current_function_name;
         unsigned int in_while;
+        std::string exit_label, loop_head_label;
         bool first_run_on_function_declerations;
 
         /* Helper function to print a string with the current indentation */

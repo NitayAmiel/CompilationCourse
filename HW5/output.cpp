@@ -30,6 +30,23 @@ namespace output {
        
     //     }
     // }
+    static std::string op_to_string(ast::RelOpType type) {
+        switch (type) {
+            case ast::RelOpType::EQ:
+                return "eq";
+            case ast::RelOpType::NE:
+                return "ne";
+            case ast::RelOpType::LT:
+                return "lt";
+            case ast::RelOpType::GT:
+                return "gt";
+            case ast::RelOpType::LE:
+                return "le";
+            case ast::RelOpType::GE:
+                return "ge";
+        }
+    }
+
     static std::string _get_type_string(ast::BuiltInType type){
         switch(type){
             case ast::BuiltInType::INT:
@@ -358,6 +375,17 @@ namespace output {
         if(!is_numerical(node.left->type) || !is_numerical(node.right->type)){
             errorMismatch(node.line);
         }
+
+        ast::BuiltInType op_type = ast::BuiltInType::BYTE;
+        if(node.left->type == ast::BuiltInType::INT || node.right->type == ast::BuiltInType::INT) {
+            op_type = ast::BuiltInType::INT;
+        }
+
+        node.reg = code_buffer.freshVar();
+        std::string singed_letter = op_type == ast::BuiltInType::BYTE ? "u" : "s";
+        code_buffer.emit(node.reg + " = icmp " + singed_letter + op_to_string(node.op)
+                            + get_type_string(op_type) + node.left->reg + ", " + node.right->reg);
+        code_buffer.emit("br i1 " + node.reg + " label " + node.true_label + " label " + node.false_label);
     }
 
     void MyVisitor::visit(ast::Type &node) { /*NOTHING*/ }
@@ -398,6 +426,9 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Not &node) {
+        std::string true_label = node.exp->true_label;
+        node.exp->true_label = node.exp->false_label;
+        node.exp->false_label = true_label;
         node.exp->accept(*this);
         check_error_definitons(node.exp);
         if(node.exp->type != ast::BuiltInType::BOOL){
@@ -407,8 +438,17 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::And &node) {
+        node.left->true_label = code_buffer.freshLabel();
+        node.left->false_label = node.false_label;
+
         node.left->accept(*this);
+
+        code_buffer.emit(node.left->true_label + ":");
+        node.right->true_label = node.true_label;
+        node.right->false_label = node.false_label;
+
         node.right->accept(*this);
+
         check_error_definitons(node.left);
         check_error_definitons(node.right);
         if(node.left->type != ast::BuiltInType::BOOL){
@@ -422,7 +462,15 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Or &node) {
+        node.left->true_label = node.true_label;
+        node.left->false_label = code_buffer.freshLabel();
+
         node.left->accept(*this);
+
+        code_buffer.emit(node.left->false_label + ":");
+        node.right->true_label = node.true_label;
+        node.right->false_label = node.false_label;
+
         node.right->accept(*this);
         check_error_definitons(node.left);
         check_error_definitons(node.right);
@@ -499,6 +547,7 @@ namespace output {
 
         // maybe need to be removed
         if(node.in_middle_of_braces){
+            code_buffer.emit("br label " + node.next_label);
             this->end_scope();
         }
         ////////////////////////////////
@@ -508,12 +557,14 @@ namespace output {
         if (this->in_while == 0) {
             errorUnexpectedBreak(node.line);
         }
+        code_buffer.emit("br label " + exit_label);
     }
 
     void MyVisitor::visit(ast::Continue &node) {
         if (this->in_while == 0) {
             errorUnexpectedContinue(node.line);
         }
+        code_buffer.emit("br label " + loop_head_label);
     }
 
 
@@ -540,8 +591,12 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::If &node) {
+        node.condition->true_label = code_buffer.freshLabel();
+        node.condition->false_label = node.otherwise ? code_buffer.freshLabel() : node.condition->true_label;
+        node.then->next_label = code_buffer.freshLabel();
+        node.otherwise->next_label = node.then->next_label;
+
         node.condition->accept(*this);
-        
         check_error_definitons(node.condition);
         /*if(node.otherwise){
             check_error_definitons(node.condition);//,  node.line);
@@ -552,29 +607,49 @@ namespace output {
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.condition->line);
         }
+
+        code_buffer.emit(node.condition->true_label + ":");
+
         this->begin_Scope();
         node.then->accept(*this);
         this->end_scope();
 
         if (node.otherwise) {
+            code_buffer.emit(node.condition->false_label + ":");
+
             this->begin_Scope();
             node.otherwise->accept(*this);
             this->end_scope();
         }
+
+        code_buffer.emit(node.then->next_label + ":");
+        //code_buffer.emit("br label" + node.next_label);
     }
 
     void MyVisitor::visit(ast::While &node) {
+        loop_head_label = code_buffer.freshLabel();
+        exit_label = code_buffer.freshLabel();
+        node.condition->true_label = code_buffer.freshLabel();
+        node.condition->false_label = exit_label;
+
+        code_buffer.emit(loop_head_label + ":");
+
         node.condition->accept(*this); 
         check_error_definitons(node.condition);//,  node.line);
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.condition->line);
         }
+
+        code_buffer.emit(node.condition->true_label + ":");
+        node.body->next_label = loop_head_label;
+
         this->in_while++;
         this->begin_Scope();
         node.body->accept(*this);
         this->end_scope();
         this->in_while--;
-    
+
+        code_buffer.emit(node.condition->false_label + ":");
     }
 
     void MyVisitor::visit(ast::VarDecl &node) {
