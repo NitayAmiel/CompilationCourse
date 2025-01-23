@@ -6,6 +6,14 @@
 namespace output {
     /* Helper functions */
 
+
+    static std::string get_register_name(const SymTableEntry& id_entry ){
+        return "%" + std::to_string(-(id_entry.offset+1));
+    }
+
+    static bool defined_as_parameter(const SymTableEntry& id_entry){
+        return id_entry.offset < 0;
+    }
     static std::string loadFileContent(const std::string& filename) {
         std::ifstream file(filename);
         if (!file) {
@@ -323,8 +331,14 @@ namespace output {
         if(id_entry ) {
             node.type = !is_function(id_entry) ? id_entry->ret_type : ast::BuiltInType::DEF_AS_FUNC;
             if(node.type != ast::BuiltInType::DEF_AS_FUNC) {
+                if(defined_as_parameter(*id_entry)){
+                    node.reg = get_register_name(*id_entry);
+                    //this->code_buffer.emit(node.reg + " = load " + get_type_string(node.type) + ", " + get_type_string(node.type) + get_register_name(*id_entry));
+                }
+                else {
                 node.reg = this->code_buffer.freshVar();
-                this->code_buffer.emit(node.reg + " = load " + get_type_string(node.type) + ", " + get_ptr_type_string(node.type) +  "%" + node.value);
+                this->code_buffer.emit(node.reg + " = load " + get_type_string(node.type) + ", " + get_ptr_type_string(node.type) +  "%v" + node.value);
+                }
             }
         }else {
             node.type = ast::BuiltInType::UN_DEF;
@@ -555,8 +569,13 @@ namespace output {
             }
         }
     llvm_part:
-        node.reg = this->code_buffer.freshVar();
-        std::string cmd_string = node.reg + " = call " + get_type_string(id_entry->ret_type) + "@" + id_entry->name + "(";
+        std::string cmd_string ;
+        if(id_entry->ret_type == ast::BuiltInType::VOID){
+            cmd_string = "call " + get_type_string(id_entry->ret_type) + "@" + id_entry->name + "(";
+        }else{
+            node.reg = this->code_buffer.freshVar();
+            cmd_string = node.reg + " = call " + get_type_string(id_entry->ret_type) + "@" + id_entry->name + "(";
+        }
         bool first_param = true;
         for(auto param : node.args->exps){
             if(param->type == ast::BuiltInType::VOID){
@@ -746,7 +765,7 @@ namespace output {
 
         if(node.init_exp){
             
-            this->code_buffer.emit( "store " + get_type_string(node.type->type) + node.init_exp->reg + " , "+ get_ptr_type_string(node.type->type) + "%" +node.id->value );
+            this->code_buffer.emit( "store " + get_type_string(node.type->type) + node.init_exp->reg + " , "+ get_ptr_type_string(node.type->type) + "%v" +node.id->value );
         }
     }
 

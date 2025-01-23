@@ -29,42 +29,41 @@ define void @print(i8*) {
 define void @main() {
 label_0:
 %t0 = add i1 0, true
-%t1 = call void @printByValue(i1 %t0)
-%t2 = add i1 0, false
-%t3 = call void @printByValue(i1 %t2)
-%t4 = add i1 0, true
-br i1 %t4 ,label %label_1 ,label %label_2
+call void @printByValue(i1 %t0)
+%t1 = add i1 0, false
+call void @printByValue(i1 %t1)
+%t2 = add i1 0, true
+br i1 %t2 ,label %label_1 ,label %label_2
 label_1:
-%t5 = getelementptr [5 x i8], [5 x i8]* @.str0, i32 0, i32 0
-%t6 = call void @print(i8* %t5)
+%t3 = getelementptr [5 x i8], [5 x i8]* @.str0, i32 0, i32 0
+call void @print(i8* %t3)
 br label %label_2
 label_2:
-%t7 = add i1 0, false
-br i1 %t7 ,label %label_3 ,label %label_5
+%t4 = add i1 0, false
+br i1 %t4 ,label %label_3 ,label %label_5
 label_5:
-%t8 = add i1 0, false
-%t9 = add i1 0, true
-%t10 = and i1 %t8, %t9
-%t11 = or i1 %t7, %t10
-br i1 %t11 ,label %label_3 ,label %label_4
+%t5 = add i1 0, false
+%t6 = add i1 0, true
+%t7 = and i1 %t5, %t6
+%t8 = or i1 %t4, %t7
+br i1 %t8 ,label %label_3 ,label %label_4
 label_3:
-%t12 = getelementptr [5 x i8], [5 x i8]* @.str1, i32 0, i32 0
-%t13 = call void @print(i8* %t12)
+%t9 = getelementptr [5 x i8], [5 x i8]* @.str1, i32 0, i32 0
+call void @print(i8* %t9)
 br label %label_4
 label_4:
 ret void 
 }
 define void @printByValue(i1 ) {
 label_6:
-%t14 = load i1 , i1* %val
-br i1 %t14 ,label %label_7 ,label %label_8
+br i1 %0 ,label %label_7 ,label %label_8
 label_7:
-%t15 = getelementptr [12 x i8], [12 x i8]* @.str2, i32 0, i32 0
-%t16 = call void @print(i8* %t15)
+%t10 = getelementptr [12 x i8], [12 x i8]* @.str2, i32 0, i32 0
+call void @print(i8* %t10)
 br label %label_9
 label_8:
-%t17 = getelementptr [13 x i8], [13 x i8]* @.str3, i32 0, i32 0
-%t18 = call void @print(i8* %t17)
+%t11 = getelementptr [13 x i8], [13 x i8]* @.str3, i32 0, i32 0
+call void @print(i8* %t11)
 br label %label_9
 label_9:
 ret void 
