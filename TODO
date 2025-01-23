@@ -1,18 +1,9 @@
-change casting - check that the acst is valid ---  DONE
-add Lbrace Rbrace flags to statements ---- DONE 
-enable explicit casting from byte to int ---- DONE
-relop - verifying that both are numerical types -- DONE
-update call type  return value -- DONE
-main function --- DONE
-check VOID in Formals + VarDecl --- DONE
-check that string is only allowed when print() is in used --- DONE
-check that IF / WHile get boll exp -- DONE
-
-check if arguments are already in the symtable --- DONE
-error def as func and error def as var in case of x = c + 1 -- DONE
+להוסיף ה לפני הלייבל של המשתנה 
+יש לנו בעיה עם הפרמטרים של הפונקצייה, הם לא נכנסים בALLOCA כמו שרצינו
 
 
-to check if there is need for space in printing prototype
-to check if we need to use errorDef or errorDefAsVar in FuncDecl
-to check if we need to return the line of the entire function or the parameter itself
-מה קודם - הקיום של main או התקינות של הקוד
+adding p before values Nitush
+parameters of functions Nitayush
+to check if the return valus is void in function - remove assign to register - Nitayush
+change the while - Shaychuck
+overview the next labels - Shay chuck

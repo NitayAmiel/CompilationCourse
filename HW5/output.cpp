@@ -57,6 +57,8 @@ namespace output {
                 return "i1";
             case ast::BuiltInType::VOID:
                 return "void";
+            case ast::BuiltInType::STRING:
+                return "i8*";
                 //TODO
         }
     }
@@ -70,8 +72,9 @@ namespace output {
     }
 
     static std::string create_string_of_params(std::vector<ast::BuiltInType>& args){
-         bool first_param = true;
-         std::string res = "(";
+         
+        bool first_param = true;
+        std::string res = "(";
         for(auto const &param : args){
             if(param == ast::BuiltInType::VOID){
                 break;
@@ -226,8 +229,8 @@ namespace output {
     CodeBuffer::CodeBuffer() : labelCount(0), varCount(0), stringCount(0) {}
 
     std::string CodeBuffer::freshLabel() {
-        //return "%label_" + std::to_string(labelCount++); this is the segel code
-        return "label_" + std::to_string(labelCount++);
+        return "%label_" + std::to_string(labelCount++);
+        //return "label_" + std::to_string(labelCount++);
     }
 
     std::string CodeBuffer::freshVar() {
@@ -301,6 +304,11 @@ namespace output {
 
     void MyVisitor::visit(ast::String &node) {
         node.type = ast::BuiltInType::STRING;
+
+        node.reg = this->code_buffer.freshVar();
+        
+        std::string var = this->code_buffer.emitString(node.value);
+        this->code_buffer.emit(node.reg + " = getelementptr [" + std::to_string(node.value.length() + 1) + " x i8], [" + std::to_string(node.value.length() + 1) + " x i8]* " + var + ", i32 0, i32 0");
     }
 
     void MyVisitor::visit(ast::Bool &node) {
@@ -385,7 +393,7 @@ namespace output {
         std::string singed_letter = op_type == ast::BuiltInType::BYTE ? "u" : "s";
         code_buffer.emit(node.reg + " = icmp " + singed_letter + op_to_string(node.op)
                             + get_type_string(op_type) + node.left->reg + ", " + node.right->reg);
-        code_buffer.emit("br i1 " + node.reg + " label " + node.true_label + " label " + node.false_label);
+        //code_buffer.emit("br i1 " + node.reg + " label " + node.true_label + " label " + node.false_label);
     }
 
     void MyVisitor::visit(ast::Type &node) { /*NOTHING*/ }
@@ -438,14 +446,21 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::And &node) {
-        node.left->true_label = code_buffer.freshLabel();
-        node.left->false_label = node.false_label;
-
+        // node.left->true_label = code_buffer.freshLabel();
+        // node.left->false_label = node.false_label;
         node.left->accept(*this);
 
-        code_buffer.emit(node.left->true_label + ":");
-        node.right->true_label = node.true_label;
-        node.right->false_label = node.false_label;
+        if(!node.false_label.empty()) {
+            node.true_label = this->code_buffer.freshLabel();
+            this->code_buffer.emit("br i1 " + node.left->reg + " ,label " + node.true_label + " ,label " + node.false_label);
+            this->code_buffer.emitLabel(node.true_label);
+        }
+
+
+
+       // this->code_buffer.emitLabel(node.left->true_label);
+        // node.right->true_label = node.true_label;
+        // node.right->false_label = node.false_label;
 
         node.right->accept(*this);
 
@@ -459,17 +474,27 @@ namespace output {
         }
     
         node.type = ast::BuiltInType::BOOL;
+
+        node.reg = this->code_buffer.freshVar();
+        this->code_buffer.emit(node.reg + " = and " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
     }
 
     void MyVisitor::visit(ast::Or &node) {
-        node.left->true_label = node.true_label;
-        node.left->false_label = code_buffer.freshLabel();
-
         node.left->accept(*this);
+        if(!node.true_label.empty()) {
+            node.false_label = this->code_buffer.freshLabel();
+            this->code_buffer.emit("br i1 " + node.left->reg + " ,label " + node.true_label + " ,label " + node.false_label);
+            this->code_buffer.emitLabel(node.false_label);
+        }
 
-        code_buffer.emit(node.left->false_label + ":");
-        node.right->true_label = node.true_label;
-        node.right->false_label = node.false_label;
+
+        //node.left->true_label = node.true_label;
+        //node.left->false_label = code_buffer.freshLabel();
+
+
+        // code_buffer.emitLabel(node.left->false_label);
+        // node.right->true_label = node.true_label;
+        // node.right->false_label = node.false_label;
 
         node.right->accept(*this);
         check_error_definitons(node.left);
@@ -478,6 +503,9 @@ namespace output {
             errorMismatch(node.line);
         }
         node.type = ast::BuiltInType::BOOL;
+    
+        node.reg = this->code_buffer.freshVar();
+        this->code_buffer.emit(node.reg + " = or " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
     }
 
 
@@ -515,6 +543,7 @@ namespace output {
         }
         node.type = id_entry->ret_type;
         if(node.args->exps.size() == 0 &&  id_entry->paramTypes.at(0).type == ast::BuiltInType::VOID){
+            goto llvm_part;
             return;
         }
         if(node.args->exps.size() != id_entry->paramTypes.size()) {
@@ -525,7 +554,24 @@ namespace output {
                 errorPrototypeMismatch(node.line, node.func_id->value, params_types);
             }
         }
-
+    llvm_part:
+        node.reg = this->code_buffer.freshVar();
+        std::string cmd_string = node.reg + " = call " + get_type_string(id_entry->ret_type) + "@" + id_entry->name + "(";
+        bool first_param = true;
+        for(auto param : node.args->exps){
+            if(param->type == ast::BuiltInType::VOID){
+                break;
+            }
+            if(!first_param){
+                cmd_string += ", ";
+            }else{
+                first_param = false;
+            }
+            cmd_string += get_type_string(param->type);
+            cmd_string += param->reg;
+        }
+        cmd_string += ")";
+        this->code_buffer.emit(cmd_string);
 
     }
 
@@ -546,8 +592,8 @@ namespace output {
         }
 
         // maybe need to be removed
+        //code_buffer.emit("br label " + node.next_label);
         if(node.in_middle_of_braces){
-            code_buffer.emit("br label " + node.next_label);
             this->end_scope();
         }
         ////////////////////////////////
@@ -591,13 +637,27 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::If &node) {
-        node.condition->true_label = code_buffer.freshLabel();
-        node.condition->false_label = node.otherwise ? code_buffer.freshLabel() : node.condition->true_label;
-        node.then->next_label = code_buffer.freshLabel();
-        node.otherwise->next_label = node.then->next_label;
 
+        std::string if_next_true_label = code_buffer.freshLabel();
+        std::string if_next_false_label = code_buffer.freshLabel();
+        std::string next_label = node.otherwise ? this->code_buffer.freshLabel() : if_next_false_label;
+
+        node.condition->true_label =if_next_true_label; 
+        node.condition->false_label =if_next_false_label; 
         node.condition->accept(*this);
+        code_buffer.emit("br i1 " + node.condition->reg + " ,label " + if_next_true_label + " ,label " + if_next_false_label);
+        this->code_buffer.emitLabel(if_next_true_label);
+        // node.condition->true_label = code_buffer.freshLabel();
+        // node.condition->false_label = node.otherwise ? code_buffer.freshLabel() : node.condition->true_label;
+         //node.then->next_label = code_buffer.freshLabel();
+        // if(node.otherwise){
+        //     node.otherwise->next_label = node.then->next_label;
+        // }
+
+        //node.condition->accept(*this);
         check_error_definitons(node.condition);
+
+        //code_buffer.emit("br i1 " + node.condition->reg + " ,label " + node.condition->true_label + " ,label " + node.condition->false_label);
         /*if(node.otherwise){
             check_error_definitons(node.condition);//,  node.line);
         }else{
@@ -608,21 +668,27 @@ namespace output {
             errorMismatch(node.condition->line);
         }
 
-        code_buffer.emit(node.condition->true_label + ":");
+        //code_buffer.emitLabel(node.condition->true_label);
 
         this->begin_Scope();
         node.then->accept(*this);
         this->end_scope();
 
+        this->code_buffer.emit("br label " + next_label);
         if (node.otherwise) {
-            code_buffer.emit(node.condition->false_label + ":");
+
+            this->code_buffer.emitLabel(if_next_false_label);
+            // code_buffer.emitLabel(node.condition->false_label);
 
             this->begin_Scope();
             node.otherwise->accept(*this);
             this->end_scope();
+            this->code_buffer.emit("br label " + next_label);
+
         }
 
-        code_buffer.emit(node.then->next_label + ":");
+        code_buffer.emitLabel(next_label );
+        //code_buffer.emitLabel(node.then->next_label );
         //code_buffer.emit("br label" + node.next_label);
     }
 
@@ -632,7 +698,7 @@ namespace output {
         node.condition->true_label = code_buffer.freshLabel();
         node.condition->false_label = exit_label;
 
-        code_buffer.emit(loop_head_label + ":");
+        code_buffer.emitLabel(loop_head_label );
 
         node.condition->accept(*this); 
         check_error_definitons(node.condition);//,  node.line);
@@ -640,7 +706,7 @@ namespace output {
             errorMismatch(node.condition->line);
         }
 
-        code_buffer.emit(node.condition->true_label + ":");
+        code_buffer.emitLabel(node.condition->true_label);
         node.body->next_label = loop_head_label;
 
         this->in_while++;
@@ -649,7 +715,7 @@ namespace output {
         this->end_scope();
         this->in_while--;
 
-        code_buffer.emit(node.condition->false_label + ":");
+        code_buffer.emitLabel(node.condition->false_label);
     }
 
     void MyVisitor::visit(ast::VarDecl &node) {
@@ -767,7 +833,7 @@ namespace output {
             }
 
             this->code_buffer.emit("define " + get_type_string(id_entry->ret_type) + "@" + id_entry->name + create_string_of_params(params_array) + " {");
-            this->code_buffer.emit(this->code_buffer.freshLabel() + ":");
+            this->code_buffer.emitLabel(this->code_buffer.freshLabel());
 
             node.body->accept(*this);
 
