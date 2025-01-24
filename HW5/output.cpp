@@ -670,8 +670,8 @@ namespace output {
         std::string if_next_false_label = code_buffer.freshLabel();
         std::string next_label = node.otherwise ? this->code_buffer.freshLabel() : if_next_false_label;
 
-        node.condition->true_label =if_next_true_label; 
-        node.condition->false_label =if_next_false_label; 
+        node.condition->true_label = if_next_true_label;
+        node.condition->false_label = if_next_false_label;
         node.condition->accept(*this);
         code_buffer.emit("br i1 " + node.condition->reg + " ,label " + if_next_true_label + " ,label " + if_next_false_label);
         this->code_buffer.emitLabel(if_next_true_label);
@@ -723,19 +723,23 @@ namespace output {
     void MyVisitor::visit(ast::While &node) {
         loop_head_label = code_buffer.freshLabel();
         exit_label = code_buffer.freshLabel();
-        node.condition->true_label = code_buffer.freshLabel();
+        std::string next_true_label = code_buffer.freshLabel();
+
+        node.condition->true_label = next_true_label;
         node.condition->false_label = exit_label;
 
-        code_buffer.emitLabel(loop_head_label );
+        code_buffer.emit("br label " + loop_head_label);
+        code_buffer.emitLabel(loop_head_label);
 
-        node.condition->accept(*this); 
+        node.condition->accept(*this);
         check_error_definitons(node.condition);//,  node.line);
         if(node.condition->type != ast::BuiltInType::BOOL){
             errorMismatch(node.condition->line);
         }
 
+        code_buffer.emit("br i1 " + node.condition->reg + " ,label " + next_true_label + " ,label " + exit_label);
         code_buffer.emitLabel(node.condition->true_label);
-        node.body->next_label = loop_head_label;
+        //node.body->next_label = loop_head_label;
 
         this->in_while++;
         this->begin_Scope();
@@ -743,6 +747,7 @@ namespace output {
         this->end_scope();
         this->in_while--;
 
+        code_buffer.emit("br label " + loop_head_label);
         code_buffer.emitLabel(node.condition->false_label);
     }
 
