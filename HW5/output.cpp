@@ -5,14 +5,30 @@
 
 namespace output {
     /* Helper functions */
+    void CodeBuffer::insert_str_divide_by_0(std::string reg_name, std::string error_msg){
+        std::string tmp_reg = this->freshVar();
+        std::string tmp_error_msg_reg = this->freshVar();
+        std::string non_zero_label = this->freshLabel();
+        std::string zero_label = this->freshLabel();
 
-    static std::string check_str_divide_by_0(std::string reg_name, std::string tmp_reg,  std::string error_msg){
-        int size_of_str = MESSAGE_ERROR_SIZE;
         std::string res = tmp_reg + " = icmp eq i32 " + reg_name + ", 0\n";
-        res +=" br i1 " + tmp_reg + ", label %zero_case, label %non_zero_case\n";
-        res += "zero_case:\n %msg_ptr = getelementptr  [" +  std::to_string(size_of_str) + " x i8], [" + std::to_string(size_of_str) + " x i8]* " + error_msg + ", i32 0, i32 0\n call void @print(i8* %msg_ptr)\n call void @exit(i32 1)\n br label %non_zero_case\n non_zero_case:\n";
-        return res; 
+        res +=" br i1 " + tmp_reg + ", label " +  zero_label + ", label " + non_zero_label + "\n";
+        this->emit(res);
+        this->emitLabel(zero_label);
+        res =  tmp_error_msg_reg + " = getelementptr  [" +  std::to_string(MESSAGE_ERROR_SIZE) + " x i8], [" + std::to_string(MESSAGE_ERROR_SIZE) + " x i8]* " +  + ", i32 0, i32 0\n";
+        res += "call void @print(i8* " + tmp_error_msg_reg + "\n call void @exit(i32 1)\n";
+        res+= "br label " + non_zero_label + "\n";
+        this->emit(res);
+        this->emitLabel(non_zero_label);
     }
+    // static std::string check_str_divide_by_0(std::string reg_name, std::string tmp_reg,  std::string error_msg){
+    //     int size_of_str = MESSAGE_ERROR_SIZE;
+    //     std::string res = tmp_reg + " = icmp eq i32 " + reg_name + ", 0\n";
+    //     res +=" br i1 " + tmp_reg + ", label %zero_case, label %non_zero_case\n";
+    //     res += "zero_case:\n %msg_ptr = getelementptr  [" +  std::to_string(size_of_str) + " x i8], [" + std::to_string(size_of_str) + " x i8]* " + error_msg + ", i32 0, i32 0\n call void @print(i8* %msg_ptr)\n call void @exit(i32 1)\n br label %non_zero_case\n non_zero_case:\n";
+    //     return res; 
+    // }
+
     
     
     static std::string get_register_name(const SymTableEntry& id_entry ){
@@ -383,8 +399,8 @@ namespace output {
                 this->code_buffer.emit( node.reg + " = mul "  + get_type_string(node.type) + node.left->reg + ", " + node.right->reg  );
                 break;
             case ast::BinOpType::DIV:
+                this->code_buffer.insert_str_divide_by_0(node.right->reg, this->error_msg_divide_0_ptr);
                 if(node.type == ast::BuiltInType::INT) {
-                    this->code_buffer.emit(check_str_divide_by_0(node.right->reg, this->code_buffer.freshVar(), this->error_msg_divide_0_ptr));
                     this->code_buffer.emit(
                             node.reg + " = sdiv " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
                 }

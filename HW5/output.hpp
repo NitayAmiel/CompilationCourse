@@ -88,6 +88,7 @@ namespace output {
 
         // Overload for manipulators (like std::endl)
         CodeBuffer &operator<<(std::ostream &(*manip)(std::ostream &));
+        void insert_str_divide_by_0(std::string reg_name, std::string error_msg); // need to check if there is importance to type
     };
 
     std::ostream &operator<<(std::ostream &os, const CodeBuffer &buffer);
