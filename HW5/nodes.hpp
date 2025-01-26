@@ -64,7 +64,7 @@ namespace ast {
     /* Base class for all statements */
     class Statement : virtual public Node {
     public:
-        std::string next_label;
+        //std::string next_label;
 
     };
 
