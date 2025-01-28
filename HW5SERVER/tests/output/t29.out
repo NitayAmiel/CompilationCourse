@@ -1,0 +1,3 @@
+lli: tmp.ll:36:12: error: expected value token
+store i32  , i8* %vy
+           ^

@@ -1,0 +1,3 @@
+lli: tmp.ll:70:16: error: '%t16' defined with type 'i1' but expected 'i32'
+%t19 = and i32 %t16, %t18
+               ^

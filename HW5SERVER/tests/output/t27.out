@@ -1,0 +1,3 @@
+lli: tmp.ll:34:19: error: '%t1' defined with type 'i8' but expected 'i32'
+%t3 = icmp eq i32 %t1, 0
+                  ^

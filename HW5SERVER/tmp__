@@ -1,0 +1,87 @@
+@.str0 = constant [23 x i8] c"Error division by zero\00"@.str1 = constant [2 x i8] c"*\00"@.str2 = constant [2 x i8] c"*\00"
+declare i32 @scanf(i8*, ...)
+declare i32 @printf(i8*, ...)
+declare void @exit(i32)
+@.int_specifier_scan = constant [3 x i8] c"%d\00"
+@.int_specifier = constant [4 x i8] c"%d\0A\00"
+@.str_specifier = constant [4 x i8] c"%s\0A\00"
+
+define i32 @readi(i32) {
+    %ret_val = alloca i32
+    %spec_ptr = getelementptr [3 x i8], [3 x i8]* @.int_specifier_scan, i32 0, i32 0
+    call i32 (i8*, ...) @scanf(i8* %spec_ptr, i32* %ret_val)
+    %val = load i32, i32* %ret_val
+    ret i32 %val
+}
+
+define void @printi(i32) {
+    %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.int_specifier, i32 0, i32 0
+    call i32 (i8*, ...) @printf(i8* %spec_ptr, i32 %0)
+    ret void
+}
+
+define void @print(i8*) {
+    %spec_ptr = getelementptr [4 x i8], [4 x i8]* @.str_specifier, i32 0, i32 0
+    call i32 (i8*, ...) @printf(i8* %spec_ptr, i8* %0)
+    ret void
+}
+
+
+define i32 @fib(i8 ) {
+label_0:
+%r1 = add i32 0 , %0
+%t0 = icmp eq i32 %r1 , 0
+%t0 = icmp eq i8 %0, 0
+br i1 %t0 ,label %label_1 ,label %label_3
+label_3:
+%t1 = icmp eq i32 %0, 1
+%t2 = or i1 %t0, %t1
+br i1 %t2 ,label %label_1 ,label %label_2
+label_1:
+ret i32 1
+br label %label_2
+label_2:
+%t3 = add i8 0, 1
+%t4 = sub i8 %0, %t3
+%t5 = call i32 @fib(i8 %t4)
+%t6 = add i8 0, 2
+%t7 = sub i8 %0, %t6
+%t8 = call i32 @fib(i8 %t7)
+%t9 = add i32 %t5, %t8
+ret i32 %t9
+ret i32  0
+}
+define void @main() {
+label_4:
+%t10 = add i8 0, 0
+%vi = alloca i8 
+store i8 %t10 , i8* %vi
+br label %label_5
+label_5:
+%t11 = load i8 , i8* %vi
+%t12 = icmp slt i32 %t11, 10
+br i1 %t12 ,label %label_7 ,label %label_6
+label_7:
+%t13 = load i8 , i8* %vi
+%t14 = call i32 @fib(i8 %t13)
+call void @printi(i32 %t14)
+%t15 = load i8 , i8* %vi
+%t16 = add i32 %t15, 1
+%t17 = icmp slt i32 %t16, 10
+br i1 %t17 ,label %label_8 ,label %label_9
+label_8:
+%t18 = getelementptr [2 x i8], [2 x i8]* @.str1, i32 0, i32 0
+call void @print(i8* %t18)
+br label %label_9
+label_9:
+%t19 = load i8 , i8* %vi
+%t20 = load i8 , i8* %vi
+%t21 = add i8 0, 1
+%t22 = add i8 %t20, %t21
+store i8 %t22 , i8* %i
+br label %label_5
+label_6:
+%t23 = getelementptr [2 x i8], [2 x i8]* @.str2, i32 0, i32 0
+call void @print(i8* %t23)
+ret void 
+}

@@ -1,0 +1,3 @@
+lli: tmp.ll:33:29: error: '%t0' defined with type 'i1' but expected 'i32'
+call void @printByValue(i32 %t0)
+                            ^

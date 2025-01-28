@@ -1,0 +1,3 @@
+lli: tmp.ll:35:1: error: expected value token
+ret i32  0
+^
