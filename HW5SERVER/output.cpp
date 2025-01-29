@@ -3,6 +3,8 @@
 #include <fstream>
 #include <sstream>
 
+#define DEBUG 0
+
 namespace output {
     /* Helper functions */
 
@@ -105,6 +107,22 @@ namespace output {
             case ast::BuiltInType::INT:
                 return "i32";
             case ast::BuiltInType::BYTE:
+                return "i32";"i8";
+            case ast::BuiltInType::BOOL:
+                return "i32";"i1";
+            case ast::BuiltInType::VOID:
+                return "void";
+            case ast::BuiltInType::STRING:
+                return "i8*";
+                //TODO
+        }
+    }
+
+    static std::string _get_type_string_real(ast::BuiltInType type){
+        switch(type){
+            case ast::BuiltInType::INT:
+                return "i32";
+            case ast::BuiltInType::BYTE:
                 return "i8";
             case ast::BuiltInType::BOOL:
                 return "i1";
@@ -115,25 +133,9 @@ namespace output {
                 //TODO
         }
     }
-
-    static std::string _get_type_string_1_8_are_32(ast::BuiltInType type){
-        switch(type){
-            case ast::BuiltInType::INT:
-                return "i32";
-            case ast::BuiltInType::BYTE:
-                return "i32";
-            case ast::BuiltInType::BOOL:
-                return "i32";
-            case ast::BuiltInType::VOID:
-                return "void";
-            case ast::BuiltInType::STRING:
-                return "i8*";
-                //TODO
-        }
-    }
     
-    static std::string get_type_string_1_8_are_32(ast::BuiltInType type){
-        return _get_type_string_1_8_are_32(type) + " ";
+    static std::string get_type_string_real(ast::BuiltInType type){
+        return _get_type_string_real(type) + " ";
     }
 
     static std::string get_type_string(ast::BuiltInType type){
@@ -387,7 +389,7 @@ namespace output {
 
 
         node.reg = this->code_buffer.freshVar();
-        this->code_buffer.emit(node.reg + " = add i8 0, " + std::to_string(node.value));
+        this->code_buffer.emit(node.reg + " = add " + get_type_string(node.type) + "0, " + std::to_string(node.value));
     }
 
     void MyVisitor::visit(ast::String &node) {
@@ -403,7 +405,7 @@ namespace output {
         node.type = ast::BuiltInType::BOOL;
 
         node.reg = this->code_buffer.freshVar();
-        this->code_buffer.emit(node.reg + " = add i1 0, " + (node.value ? "true" : "false"));
+        this->code_buffer.emit(node.reg + " = add " + get_type_string(node.type) +"0, " + (node.value ? "1" : "0"));
     }
 
     void MyVisitor::visit(ast::ID &node) { 
@@ -446,21 +448,21 @@ namespace output {
         }
 
         std::string type_string = get_type_string(node.type);
-        std::string org_left_right_reg = "";
-        std::string tmp_left_right_reg = "";
-        std::string casted_left_right_reg = "";
-        int need_to_zext = is_int_byte(node.left->type, node.right->type);
-        if(need_to_zext != 0){
-            casted_left_right_reg = (need_to_zext == 1) ? node.right->reg : node.left->reg;
-            if(need_to_zext == 1 ){
-                node.right->reg = this->code_buffer.freshVar();
-                this->code_buffer.emit(node.right->reg + " = zext i8 "  + casted_left_right_reg + " to i32");
-            }
-            if(need_to_zext == 2 ){
-                node.left->reg = this->code_buffer.freshVar();
-                this->code_buffer.emit(node.left->reg + " = zext i8 "  + casted_left_right_reg + " to i32");
-            }
-        }
+//        std::string org_left_right_reg = "";
+//        std::string tmp_left_right_reg = "";
+//        std::string casted_left_right_reg = "";
+//        int need_to_zext = is_int_byte(node.left->type, node.right->type);
+//        if(need_to_zext != 0){
+//            casted_left_right_reg = (need_to_zext == 1) ? node.right->reg : node.left->reg;
+//            if(need_to_zext == 1 ){
+//                node.right->reg = this->code_buffer.freshVar();
+//                this->code_buffer.emit(node.right->reg + " = zext i8 "  + casted_left_right_reg + " to i32");
+//            }
+//            if(need_to_zext == 2 ){
+//                node.left->reg = this->code_buffer.freshVar();
+//                this->code_buffer.emit(node.left->reg + " = zext i8 "  + casted_left_right_reg + " to i32");
+//            }
+//        }
 
         node.reg = this->code_buffer.freshVar();
         switch (node.op) {
@@ -487,12 +489,12 @@ namespace output {
         }
 
 
-        if(need_to_zext == 1 ){
-            node.right->reg = casted_left_right_reg;
-        }
-        if(need_to_zext == 1 ){
-            node.left->reg = casted_left_right_reg;
-        }
+//        if(need_to_zext == 1 ){
+//            node.right->reg = casted_left_right_reg;
+//        }
+//        if(need_to_zext == 1 ){
+//            node.left->reg = casted_left_right_reg;
+//        }
     }
 
     void MyVisitor::visit(ast::RelOp &node) {
@@ -513,20 +515,23 @@ namespace output {
 
         std::string left_reg = node.left->reg;
         std::string right_reg = node.right->reg;
-        int need_to_zext = is_int_byte(node.left->type, node.right->type);
-        if(need_to_zext == 1){
-            right_reg = this->code_buffer.freshVar();
-            this->code_buffer.emit(right_reg + " = zext i8 "  + node.right->reg + " to i32");
-        }
-        
-        if(need_to_zext == 2){
-            left_reg = this->code_buffer.freshVar();
-            this->code_buffer.emit(left_reg + " = zext i8 "  + node.left->reg + " to i32");
-        }
+//        int need_to_zext = is_int_byte(node.left->type, node.right->type);
+//        if(need_to_zext == 1){
+//            right_reg = this->code_buffer.freshVar();
+//            this->code_buffer.emit(right_reg + " = zext i8 "  + node.right->reg + " to i32");
+//        }
+//
+//        if(need_to_zext == 2){
+//            left_reg = this->code_buffer.freshVar();
+//            this->code_buffer.emit(left_reg + " = zext i8 "  + node.left->reg + " to i32");
+//        }
 
         node.reg = code_buffer.freshVar();
-        code_buffer.emit(node.reg + " = icmp " +  op_to_string_and_sign(node.op, op_type)
+        std::string temp_result = this->code_buffer.freshVar();
+        code_buffer.emit(temp_result + " = icmp " +  op_to_string_and_sign(node.op, op_type)
                             + get_type_string(op_type) + left_reg + ", " + right_reg);
+
+        this->code_buffer.emit(node.reg + " = zext i1 " + temp_result + " to i32");
         //code_buffer.emit("br i1 " + node.reg + " label " + node.true_label + " label " + node.false_label);
     }
 
@@ -546,7 +551,7 @@ namespace output {
             errorMismatch(node.line);
         }
         node.type = node.target_type->type;
-      
+        node.reg = node.exp->reg;
       /*  try {
         std::shared_ptr<ast::ID> id_obj = std::dynamic_pointer_cast<ast::ID>(node.exp);
         if (id_obj) {
@@ -577,25 +582,32 @@ namespace output {
             errorMismatch(node.exp->line);
         }
         node.type = ast::BuiltInType::BOOL;
+        node.reg = this->code_buffer.freshVar();
+        this->code_buffer.emit(node.reg + " = add " + get_type_string(node.type) + node.exp->reg + ", " + "1");
     }
 
     void MyVisitor::visit(ast::And &node) {
         // node.left->true_label = code_buffer.freshLabel();
         // node.left->false_label = node.false_label;
+        if(DEBUG)
+            this->code_buffer.emit("---AND---");
+        node.left->true_label = node.true_label;
+        node.left->false_label = node.false_label;
         node.left->accept(*this);
 
-        if(!node.false_label.empty()) {
-            node.true_label = this->code_buffer.freshLabel();
-            this->code_buffer.emit("br i1 " + node.left->reg + " ,label " + node.true_label + " ,label " + node.false_label);
-            this->code_buffer.emitLabel(node.true_label);
-        }
+        std::string dummy_label = this->code_buffer.freshLabel();
+        std::string truncated = this->code_buffer.freshVar();
+        this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
+        this->code_buffer.emit("br i1 " + truncated + " ,label " + dummy_label + " ,label " + node.false_label);
+        this->code_buffer.emitLabel(dummy_label);
 
 
 
        // this->code_buffer.emitLabel(node.left->true_label);
         // node.right->true_label = node.true_label;
         // node.right->false_label = node.false_label;
-
+        node.right->true_label = node.true_label;
+        node.right->false_label = node.false_label;
         node.right->accept(*this);
 
         check_error_definitons(node.left);
@@ -614,12 +626,18 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::Or &node) {
+        if(DEBUG)
+            this->code_buffer.emit("---OR----");
+
+        node.left->true_label = node.true_label;
+        node.left->false_label = node.false_label;
         node.left->accept(*this);
-        if(!node.true_label.empty()) {
-            node.false_label = this->code_buffer.freshLabel();
-            this->code_buffer.emit("br i1 " + node.left->reg + " ,label " + node.true_label + " ,label " + node.false_label);
-            this->code_buffer.emitLabel(node.false_label);
-        }
+
+        std::string dummy_label = this->code_buffer.freshLabel();
+        std::string truncated = this->code_buffer.freshVar();
+        this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
+        this->code_buffer.emit("br i1 " + truncated + " ,label " + node.true_label + " ,label " + dummy_label);
+        this->code_buffer.emitLabel(dummy_label);
 
 
         //node.left->true_label = node.true_label;
@@ -630,6 +648,8 @@ namespace output {
         // node.right->true_label = node.true_label;
         // node.right->false_label = node.false_label;
 
+        node.right->true_label = node.true_label;
+        node.right->false_label = node.false_label;
         node.right->accept(*this);
         check_error_definitons(node.left);
         check_error_definitons(node.right);
@@ -776,7 +796,8 @@ namespace output {
     }
 
     void MyVisitor::visit(ast::If &node) {
-
+        if(DEBUG)
+            this->code_buffer.emit("---If----");
         std::string if_next_true_label = code_buffer.freshLabel();
         std::string if_next_false_label = code_buffer.freshLabel();
         std::string next_label = node.otherwise ? this->code_buffer.freshLabel() : if_next_false_label;
@@ -784,7 +805,9 @@ namespace output {
         node.condition->true_label = if_next_true_label;
         node.condition->false_label = if_next_false_label;
         node.condition->accept(*this);
-        code_buffer.emit("br i1 " + node.condition->reg + " ,label " + if_next_true_label + " ,label " + if_next_false_label);
+        std::string truncated = this->code_buffer.freshVar();
+        this->code_buffer.emit(truncated + " = trunc i32 " + node.condition->reg + " to i1");
+        code_buffer.emit("br i1 " + truncated + " ,label " + if_next_true_label + " ,label " + if_next_false_label);
         this->code_buffer.emitLabel(if_next_true_label);
         // node.condition->true_label = code_buffer.freshLabel();
         // node.condition->false_label = node.otherwise ? code_buffer.freshLabel() : node.condition->true_label;
@@ -853,7 +876,9 @@ namespace output {
             errorMismatch(node.condition->line);
         }
 
-        code_buffer.emit("br i1 " + node.condition->reg + " ,label " + next_true_label + " ,label " + exit_label);
+        std::string truncated = this->code_buffer.freshVar();
+        this->code_buffer.emit(truncated + " = trunc i32 " + node.condition->reg + " to i1");
+        code_buffer.emit("br i1 " + truncated + " ,label " + next_true_label + " ,label " + exit_label);
         code_buffer.emitLabel(node.condition->true_label);
         //node.body->next_label = loop_head_label;
 
@@ -897,7 +922,17 @@ namespace output {
         insert_variable(node.id->value, node.type->type);
 
         if(node.init_exp){
-            this->code_buffer.emit( "store " + get_type_string(node.type->type) + node.init_exp->reg + " , "+ get_ptr_type_string(node.type->type) + "%v" +node.id->value );
+            std::string new_init;
+            if(node.init_exp->type != ast::BuiltInType::INT) {
+                new_init = this->code_buffer.freshVar();
+                std::string temp_init = this->code_buffer.freshVar();
+                this->code_buffer.emit(temp_init + " = trunc i32 " + node.init_exp->reg + " to " + get_type_string_real(node.init_exp->type));
+                this->code_buffer.emit( new_init + " = zext " + get_type_string_real(node.init_exp->type) + temp_init + " to i32");
+            }
+            else {
+                new_init = node.init_exp->reg;
+            }
+            this->code_buffer.emit( "store " + get_type_string(node.type->type) + new_init + " , " + get_ptr_type_string(node.type->type) + "%v" + node.id->value );
         }
     }
 
@@ -994,7 +1029,7 @@ namespace output {
                 if(is_numerical(id_entry->ret_type)){
                     return_cmd += " 0";
                 }else if(id_entry->ret_type == ast::BuiltInType::BOOL){
-                    return_cmd += " false";
+                    return_cmd += " 0";
                 }
                 this->code_buffer.emit(return_cmd);
             //}
