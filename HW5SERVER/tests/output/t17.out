@@ -1,3 +1,2 @@
-lli: tmp.ll:35:9: error: '%t1' defined with type 'i1' but expected 'i32'
-ret i32 %t1
-        ^
+good
+good

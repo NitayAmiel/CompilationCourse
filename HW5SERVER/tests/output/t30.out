@@ -1,3 +1,1 @@
-lli: tmp.ll:34:11: error: '%t0' defined with type 'i8' but expected 'i32'
-store i32 %t0 , i8* %vx
-          ^
+7

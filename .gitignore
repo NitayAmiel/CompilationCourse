@@ -1,3 +1,4 @@
 .gitignore
 HW3
 HW5/.idea/c_cpp_properties.json
+HW5/tests/

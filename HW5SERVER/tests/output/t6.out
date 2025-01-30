@@ -1,3 +1,4 @@
-lli: tmp.ll:70:16: error: '%t16' defined with type 'i1' but expected 'i32'
-%t19 = and i32 %t16, %t18
-               ^
+a is greater than b, sum = 
+8
+a is 5 and b is 3
+a is less than 10

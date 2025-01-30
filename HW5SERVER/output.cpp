@@ -595,12 +595,13 @@ namespace output {
         node.left->false_label = node.false_label;
         node.left->accept(*this);
 
+         if(!node.false_label.empty()) {
         std::string dummy_label = this->code_buffer.freshLabel();
         std::string truncated = this->code_buffer.freshVar();
         this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
         this->code_buffer.emit("br i1 " + truncated + " ,label " + dummy_label + " ,label " + node.false_label);
         this->code_buffer.emitLabel(dummy_label);
-
+         }
 
 
        // this->code_buffer.emitLabel(node.left->true_label);
@@ -633,10 +634,29 @@ namespace output {
         node.left->false_label = node.false_label;
         node.left->accept(*this);
 
-        std::string dummy_label = this->code_buffer.freshLabel();
+        //  if(!node.true_label.empty()) {
+        //     std::string dummy_label = this->code_buffer.freshLabel();
+        //     std::string truncated = this->code_buffer.freshVar();
+        //     this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
+        //     this->code_buffer.emit("br i1 " + truncated + " ,label " + node.true_label + " ,label " + dummy_label);
+        //     this->code_buffer.emitLabel(dummy_label);
+        // }
+
+
+        node.type = ast::BuiltInType::BOOL;
+
+        std::string my_label = this->code_buffer.freshLabel();
+        std::string my_label_for_phi = this->code_buffer.freshLabel();
+        std::string reg_for_short_circuit = this->code_buffer.freshVar();
+        std::string my_label2 = this->code_buffer.freshLabel();
         std::string truncated = this->code_buffer.freshVar();
         this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
-        this->code_buffer.emit("br i1 " + truncated + " ,label " + node.true_label + " ,label " + dummy_label);
+        std::string dummy_label = this->code_buffer.freshLabel();
+        this->code_buffer.emit("br i1 " + truncated + " ,label " + my_label + " ,label " + dummy_label);
+
+        this->code_buffer.emitLabel(my_label);
+        this->code_buffer.emit(reg_for_short_circuit + " = add " + get_type_string(node.type) + node.left->reg + " , 0"); 
+        this->code_buffer.emit("br label " + my_label2);
         this->code_buffer.emitLabel(dummy_label);
 
 
@@ -657,9 +677,17 @@ namespace output {
             errorMismatch(node.line);
         }
         node.type = ast::BuiltInType::BOOL;
-    
+
+        this->code_buffer.emit("br label " + my_label_for_phi);
+        this->code_buffer.emitLabel(my_label_for_phi);
+        std::string reg_for_non_short = this->code_buffer.freshVar();
+        this->code_buffer.emit( reg_for_non_short + " = or " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
+        
         node.reg = this->code_buffer.freshVar();
-        this->code_buffer.emit(node.reg + " = or " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
+        this->code_buffer.emit("br label " + my_label2);
+        this->code_buffer.emitLabel(my_label2);
+        this->code_buffer.emit(node.reg + " = phi " + get_type_string(node.type) + " [ " +  reg_for_short_circuit + " , " + my_label + " ], [" + reg_for_non_short + " , " + my_label_for_phi + "]");
+    
     }
 
 

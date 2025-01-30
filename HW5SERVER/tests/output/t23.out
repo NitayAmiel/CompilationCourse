@@ -1,3 +1,15 @@
-lli: tmp.ll:97:15: error: '%t19' defined with type 'i1' but expected 'i32'
-%t24 = or i32 %t19, %t23
-              ^
+Hello world!
+40
+30
+20
+10
+3
+30
+20
+10
+2
+20
+10
+1
+Goodbye world! (proceeding to divide by zero)
+Error division by zero

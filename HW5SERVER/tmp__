@@ -1,4 +1,4 @@
-@.str0 = constant [23 x i8] c"Error division by zero\00"@.str1 = constant [2 x i8] c"*\00"@.str2 = constant [2 x i8] c"*\00"
+@.str0 = constant [23 x i8] c"Error division by zero\00"@.str1 = constant [13 x i8] c"Hello world!\00"@.str2 = constant [63 x i8] c"Something's wrong, we not too low (should have exited with 0!)\00"@.str3 = constant [45 x i8] c"Loop should have decreased 'a' down to zero!\00"@.str4 = constant [45 x i8] c"Just making sure boolean are short circuited\00"@.str5 = constant [46 x i8] c"Goodbye world! (proceeding to divide by zero)\00"@.str6 = constant [21 x i8] c"Should have crashed!\00"
 declare i32 @scanf(i8*, ...)
 declare i32 @printf(i8*, ...)
 declare void @exit(i32)
@@ -27,61 +27,235 @@ define void @print(i8*) {
 }
 
 
-define i32 @fib(i8 ) {
-label_0:
-%r1 = add i32 0 , %0
-%t0 = icmp eq i32 %r1 , 0
-%t0 = icmp eq i8 %0, 0
-br i1 %t0 ,label %label_1 ,label %label_3
-label_3:
-%t1 = icmp eq i32 %0, 1
-%t2 = or i1 %t0, %t1
-br i1 %t2 ,label %label_1 ,label %label_2
-label_1:
-ret i32 1
-br label %label_2
-label_2:
-%t3 = add i8 0, 1
-%t4 = sub i8 %0, %t3
-%t5 = call i32 @fib(i8 %t4)
-%t6 = add i8 0, 2
-%t7 = sub i8 %0, %t6
-%t8 = call i32 @fib(i8 %t7)
-%t9 = add i32 %t5, %t8
-ret i32 %t9
-ret i32  0
-}
 define void @main() {
-label_4:
-%t10 = add i8 0, 0
-%vi = alloca i8 
-store i8 %t10 , i8* %vi
-br label %label_5
+label_0:
+%t1 = icmp eq i32 1, 0
+ br i1 %t1, label %label_2, label %label_1
+
+label_2:
+%t2 = getelementptr  [23 x i8], [23 x i8]* @.str0, i32 0, i32 0
+call void @print(i8* %t2 )
+call void @exit(i32 1)
+br label %label_1
+
+label_1:
+%t0 = sdiv i32 3, 1
+%va = alloca i32 
+store i32 %t0 , i32* %va
+%t3 = getelementptr [13 x i8], [13 x i8]* @.str1, i32 0, i32 0
+call void @print(i8* %t3)
+br label %label_3
+label_3:
+%t4 = load i32 , i32* %va
+%t6 = icmp sgt i32 %t4, 0
+%t5 = zext i1 %t6 to i32
+%t7 = trunc i32 %t5 to i1
+br i1 %t7 ,label %label_5 ,label %label_4
 label_5:
-%t11 = load i8 , i8* %vi
-%t12 = icmp slt i32 %t11, 10
-br i1 %t12 ,label %label_7 ,label %label_6
+%t8 = load i32 , i32* %va
+%t9 = add i32 %t8, 1
+%vb = alloca i32 
+store i32 %t9 , i32* %vb
+%t10 = load i32 , i32* %vb
+%t11 = call i32 @printDownTimesTen(i32 %t10)
+%t13 = icmp ne i32 %t11, 0
+%t12 = zext i1 %t13 to i32
+%t14 = trunc i32 %t12 to i1
+br i1 %t14 ,label %label_6 ,label %label_7
+label_6:
+%t15 = getelementptr [63 x i8], [63 x i8]* @.str2, i32 0, i32 0
+call void @print(i8* %t15)
+ret void 
+br label %label_7
 label_7:
-%t13 = load i8 , i8* %vi
-%t14 = call i32 @fib(i8 %t13)
-call void @printi(i32 %t14)
-%t15 = load i8 , i8* %vi
-%t16 = add i32 %t15, 1
-%t17 = icmp slt i32 %t16, 10
-br i1 %t17 ,label %label_8 ,label %label_9
+%t16 = load i32 , i32* %va
+call void @printi(i32 %t16)
+%t17 = load i32 , i32* %va
+%t18 = load i32 , i32* %va
+%t19 = sub i32 %t18, 1
+store i32 %t19 , i32* %va
+br label %label_3
+label_4:
+%t20 = load i32 , i32* %va
+%t22 = icmp ne i32 %t20, 0
+%t21 = zext i1 %t22 to i32
+%t23 = trunc i32 %t21 to i1
+br i1 %t23 ,label %label_8 ,label %label_9
 label_8:
-%t18 = getelementptr [2 x i8], [2 x i8]* @.str1, i32 0, i32 0
-call void @print(i8* %t18)
+%t24 = getelementptr [45 x i8], [45 x i8]* @.str3, i32 0, i32 0
+call void @print(i8* %t24)
+ret void 
 br label %label_9
 label_9:
-%t19 = load i8 , i8* %vi
-%t20 = load i8 , i8* %vi
-%t21 = add i8 0, 1
-%t22 = add i8 %t20, %t21
-store i8 %t22 , i8* %i
-br label %label_5
-label_6:
-%t23 = getelementptr [2 x i8], [2 x i8]* @.str2, i32 0, i32 0
-call void @print(i8* %t23)
+%t25 = add i32 0, 1
+%t27 = trunc i32 %t25 to i1
+br i1 %t27 ,label %label_10 ,label %label_13
+label_10:
+%t26 = add i32 %t25 , 0
+br label %label_12
+label_13:
+%t29 = icmp eq i32 0, 0
+ br i1 %t29, label %label_15, label %label_14
+
+label_15:
+%t30 = getelementptr  [23 x i8], [23 x i8]* @.str0, i32 0, i32 0
+call void @print(i8* %t30 )
+call void @exit(i32 1)
+br label %label_14
+
+label_14:
+%t28 = sdiv i32 3, 0
+%t32 = icmp slt i32 %t28, 0
+%t31 = zext i1 %t32 to i32
+br label %label_11
+label_11:
+%t33 = or i32 %t25, %t31
+br label %label_12
+label_12:
+%t34 = phi i32  [ %t26 , %label_10 ], [%t33 , %label_11]
+%vannoyingCond = alloca i32 
+%t36 = trunc i32 %t34 to i1 
+%t35 = zext i1 %t36 to i32
+store i32 %t35 , i32* %vannoyingCond
+%t37 = load i32 , i32* %vannoyingCond
+%t38 = trunc i32 %t37 to i1
+br i1 %t38 ,label %label_18 ,label %label_17
+label_18:
+%t39 = add i32 0, 1
+%t41 = trunc i32 %t39 to i1
+br i1 %t41 ,label %label_19 ,label %label_22
+label_19:
+%t40 = add i32 %t39 , 0
+br label %label_21
+label_22:
+%t43 = icmp eq i32 0, 0
+ br i1 %t43, label %label_24, label %label_23
+
+label_24:
+%t44 = getelementptr  [23 x i8], [23 x i8]* @.str0, i32 0, i32 0
+call void @print(i8* %t44 )
+call void @exit(i32 1)
+br label %label_23
+
+label_23:
+%t42 = sdiv i32 3, 0
+%t46 = icmp slt i32 %t42, 0
+%t45 = zext i1 %t46 to i32
+br label %label_20
+label_20:
+%t47 = or i32 %t39, %t45
+br label %label_21
+label_21:
+%t48 = phi i32  [ %t40 , %label_19 ], [%t47 , %label_20]
+%t49 = and i32 %t37, %t48
+%t50 = trunc i32 %t49 to i1
+br i1 %t50 ,label %label_25 ,label %label_17
+label_25:
+%t51 = add i32 0, 0
+%t52 = trunc i32 %t51 to i1
+br i1 %t52 ,label %label_26 ,label %label_17
+label_26:
+%t54 = icmp eq i32 0, 0
+ br i1 %t54, label %label_28, label %label_27
+
+label_28:
+%t55 = getelementptr  [23 x i8], [23 x i8]* @.str0, i32 0, i32 0
+call void @print(i8* %t55 )
+call void @exit(i32 1)
+br label %label_27
+
+label_27:
+%t53 = sdiv i32 3, 0
+%t57 = icmp sgt i32 %t53, 0
+%t56 = zext i1 %t57 to i32
+%t58 = and i32 %t51, %t56
+%t60 = trunc i32 %t58 to i1
+br i1 %t60 ,label %label_29 ,label %label_32
+label_29:
+%t59 = add i32 %t58 , 0
+br label %label_31
+label_32:
+%t61 = add i32 0, 1
+br label %label_30
+label_30:
+%t62 = or i32 %t58, %t61
+br label %label_31
+label_31:
+%t63 = phi i32  [ %t59 , %label_29 ], [%t62 , %label_30]
+%t64 = and i32 %t49, %t63
+%t65 = trunc i32 %t64 to i1
+br i1 %t65 ,label %label_16 ,label %label_17
+label_16:
+%t66 = getelementptr [45 x i8], [45 x i8]* @.str4, i32 0, i32 0
+call void @print(i8* %t66)
+br label %label_17
+label_17:
+%t67 = getelementptr [46 x i8], [46 x i8]* @.str5, i32 0, i32 0
+call void @print(i8* %t67)
+%t68 = load i32 , i32* %va
+%t70 = icmp eq i32 %t68, 0
+ br i1 %t70, label %label_34, label %label_33
+
+label_34:
+%t71 = getelementptr  [23 x i8], [23 x i8]* @.str0, i32 0, i32 0
+call void @print(i8* %t71 )
+call void @exit(i32 1)
+br label %label_33
+
+label_33:
+%t69 = sdiv i32 1, %t68
+call void @printi(i32 %t69)
+%t72 = getelementptr [21 x i8], [21 x i8]* @.str6, i32 0, i32 0
+call void @print(i8* %t72)
 ret void 
+}
+define i32 @printDownTimesTen(i32 ) {
+label_35:
+%t73 = add i32 0, 1
+%vcond = alloca i32 
+%t75 = trunc i32 %t73 to i1 
+%t74 = zext i1 %t75 to i32
+store i32 %t74 , i32* %vcond
+%vi = alloca i32 
+store i32 %0 , i32* %vi
+br label %label_36
+label_36:
+%t76 = load i32 , i32* %vi
+%t78 = icmp sgt i32 %t76, 0
+%t77 = zext i1 %t78 to i32
+%t79 = load i32 , i32* %vi
+%t81 = icmp sgt i32 %t79, 0
+%t80 = zext i1 %t81 to i32
+%t82 = add i32 %t80, 1
+%t83 = add i32 %t82, 1
+%t84 = add i32 %t83, 1
+%t85 = add i32 %t84, 1
+%t86 = and i32 %t77, %t85
+%t87 = add i32 %t86, 1
+%t88 = add i32 %t87, 1
+%t89 = add i32 %t88, 1
+%t90 = add i32 %t89, 1
+%t91 = trunc i32 %t90 to i1
+br i1 %t91 ,label %label_38 ,label %label_37
+label_38:
+%t92 = load i32 , i32* %vi
+%t93 = mul i32 %t92, 10
+%vc = alloca i32 
+store i32 %t93 , i32* %vc
+%t94 = load i32 , i32* %vc
+call void @printi(i32 %t94)
+%t95 = load i32 , i32* %vi
+%t96 = load i32 , i32* %vi
+%t97 = sub i32 %t96, 1
+store i32 %t97 , i32* %vi
+%t98 = load i32 , i32* %vcond
+%t99 = load i32 , i32* %vi
+%t101 = icmp sgt i32 %t99, 0
+%t100 = zext i1 %t101 to i32
+store i32 %t100 , i32* %vcond
+br label %label_36
+label_37:
+%t102 = load i32 , i32* %vi
+ret i32 %t102
+ret i32  0
 }

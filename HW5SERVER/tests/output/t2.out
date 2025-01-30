@@ -1,3 +1,20 @@
-lli: tmp.ll:32:15: error: '%0' defined with type 'i32' but expected 'i8'
-%t0 = zext i8 %0 to i32
-              ^
+1
+*
+1
+*
+2
+*
+3
+*
+5
+*
+8
+*
+13
+*
+21
+*
+34
+*
+55
+*

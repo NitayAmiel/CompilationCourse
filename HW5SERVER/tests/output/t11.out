@@ -1,3 +1,2 @@
-lli: tmp.ll:63:16: error: '%t9' defined with type 'i1' but expected 'i32'
-%t13 = and i32 %t9, %t12
-               ^
+good
+good
