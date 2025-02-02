@@ -8,6 +8,10 @@
 namespace output {
     /* Helper functions */
 
+
+    std::string MyVisitor::get_reg_name_variable(std::string name) {
+        return "%v" + std::to_string(this->scope_id) + name; 
+    }
     std::string CodeBuffer::emit_zext(std::string reg_to_zext){
         std::string res = this->freshVar();
         this->emit(res + " = zext i8 "  + reg_to_zext + " to i32");
@@ -353,6 +357,7 @@ namespace output {
 
 
     MyVisitor::MyVisitor(){
+        this->scope_id = 0;
         this->code_buffer.emit(loadFileContent("print_functions.llvm"));
         this->error_msg_divide_0_ptr = this->code_buffer.emitString("Error division by zero");
         std::vector<SymTableEntry> initial_vector;
@@ -423,7 +428,7 @@ namespace output {
                 }
                 else {
                 node.reg = this->code_buffer.freshVar();
-                this->code_buffer.emit(node.reg + " = load " + get_type_string(node.type) + ", " + get_ptr_type_string(node.type) +  "%v" + node.value);
+                this->code_buffer.emit(node.reg + " = load " + get_type_string(node.type) + ", " + get_ptr_type_string(node.type) +  this->get_reg_name_variable(node.value));
                 }
             }
         }else {
@@ -591,22 +596,43 @@ namespace output {
         // node.left->false_label = node.false_label;
         if(DEBUG)
             this->code_buffer.emit("---AND---");
+        
         node.left->true_label = node.true_label;
         node.left->false_label = node.false_label;
         node.left->accept(*this);
 
-         if(!node.false_label.empty()) {
-        std::string dummy_label = this->code_buffer.freshLabel();
-        std::string truncated = this->code_buffer.freshVar();
-        this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
-        this->code_buffer.emit("br i1 " + truncated + " ,label " + dummy_label + " ,label " + node.false_label);
-        this->code_buffer.emitLabel(dummy_label);
-         }
+
+        //  if(!node.false_label.empty()) {
+        // std::string dummy_label = this->code_buffer.freshLabel();
+        // std::string truncated = this->code_buffer.freshVar();
+        // this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
+        // this->code_buffer.emit("br i1 " + truncated + " ,label " + dummy_label + " ,label " + node.false_label);
+        // this->code_buffer.emitLabel(dummy_label);
+        //  }
 
 
        // this->code_buffer.emitLabel(node.left->true_label);
         // node.right->true_label = node.true_label;
         // node.right->false_label = node.false_label;
+       
+       
+        node.type = ast::BuiltInType::BOOL;
+
+        std::string my_label = this->code_buffer.freshLabel();
+        std::string my_label_for_phi = this->code_buffer.freshLabel();
+        std::string reg_for_short_circuit = this->code_buffer.freshVar();
+        std::string my_label2 = this->code_buffer.freshLabel();
+        std::string truncated = this->code_buffer.freshVar();
+        this->code_buffer.emit(truncated + " = trunc i32 " + node.left->reg + " to i1");
+        std::string dummy_label = this->code_buffer.freshLabel();
+        this->code_buffer.emit("br i1 " + truncated + " ,label " + dummy_label + " ,label " + my_label);
+
+        this->code_buffer.emitLabel(my_label);
+        this->code_buffer.emit(reg_for_short_circuit + " = add " + get_type_string(node.type) + node.left->reg + " , 0"); 
+        this->code_buffer.emit("br label " + my_label2);
+        this->code_buffer.emitLabel(dummy_label);
+
+       
         node.right->true_label = node.true_label;
         node.right->false_label = node.false_label;
         node.right->accept(*this);
@@ -622,9 +648,18 @@ namespace output {
     
         node.type = ast::BuiltInType::BOOL;
 
+        this->code_buffer.emit("br label " + my_label_for_phi);
+        this->code_buffer.emitLabel(my_label_for_phi);
+        std::string reg_for_non_short = this->code_buffer.freshVar();
+        this->code_buffer.emit( reg_for_non_short + " = and " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
+        
         node.reg = this->code_buffer.freshVar();
-        this->code_buffer.emit(node.reg + " = and " + get_type_string(node.type) + node.left->reg + ", " + node.right->reg);
-    }
+        this->code_buffer.emit("br label " + my_label2);
+        this->code_buffer.emitLabel(my_label2);
+        this->code_buffer.emit(node.reg + " = phi " + get_type_string(node.type) + " [ " +  reg_for_short_circuit + " , " + my_label + " ], [" + reg_for_non_short + " , " + my_label_for_phi + "]");
+    
+
+        }
 
     void MyVisitor::visit(ast::Or &node) {
         if(DEBUG)
@@ -960,7 +995,7 @@ namespace output {
             else {
                 new_init = node.init_exp->reg;
             }
-            this->code_buffer.emit( "store " + get_type_string(node.type->type) + new_init + " , " + get_ptr_type_string(node.type->type) + "%v" + node.id->value );
+            this->code_buffer.emit( "store " + get_type_string(node.type->type) + new_init + " , " + get_ptr_type_string(node.type->type) + this->get_reg_name_variable(node.id->value) );
         }
     }
 
@@ -980,7 +1015,7 @@ namespace output {
             errorMismatch(node.line);
         }
 
-        this->code_buffer.emit( "store " + get_type_string(node.exp->type) + node.exp->reg + " , "+ get_ptr_type_string(id_entry->ret_type) + "%v" + node.id->value );
+        this->code_buffer.emit( "store " + get_type_string(node.exp->type) + node.exp->reg + " , "+ get_ptr_type_string(id_entry->ret_type) + this->get_reg_name_variable(node.id->value) );
     }
 
     void MyVisitor::visit(ast::Formal &node) {
@@ -1094,7 +1129,7 @@ namespace output {
             this->offset_table.back() += SIZE_OF_TYPE;
 
 
-            this->code_buffer.emit("%v" + name + " = alloca " + get_type_string(type));
+            this->code_buffer.emit(this->get_reg_name_variable(name) + " = alloca " + get_type_string(type));
         }
 
 
@@ -1123,6 +1158,8 @@ namespace output {
 
     void MyVisitor :: begin_Scope()
     {
+        this->scope_id += 1;
+
         std::vector<SymTableEntry> initial_vector;
         this->sym_table.push_back(initial_vector);
         this->offset_table.push_back(this->offset_table.back());

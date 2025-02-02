@@ -11,5 +11,6 @@ Hello world!
 20
 10
 1
+Just making sure boolean are short circuited
 Goodbye world! (proceeding to divide by zero)
 Error division by zero

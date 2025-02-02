@@ -127,6 +127,7 @@ namespace output {
         //std::string exit_label, loop_head_label;
         bool first_run_on_function_declerations;
         std::string error_msg_divide_0_ptr;
+        long long int scope_id;
 
         /* Helper function to print a string with the current indentation */
         //void print_indented(const std::string &str);
@@ -141,6 +142,7 @@ namespace output {
         void insert_func(std::string name, ast::BuiltInType return_type , std::vector<VariableAttributes> params, bool without_printing = false);
         void begin_Scope();
         void end_scope();
+        std::string get_reg_name_variable(std::string name);
         const SymTableEntry* id_exists(std::string name);
         SymTableEntry *  id_exists_and_change(std::string name);
 
